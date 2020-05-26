@@ -17,7 +17,7 @@ declare -A c_required_packages=([dh_make]=dh-make [debuild]=devscripts [cowbuild
 
 # Version 9 requires special treatment - debhelper_build_depedency.
 declare -A c_debhelper_distro_versions=([focal]=12 [bionic]=11 [xenial]=9)
-c_package_ppa_version=0
+c_package_ppa_version=1
 # Requires a subdirectory named <distroname> for each distro build environment.
 c_pbuilder_distros_base_path="/var/cache/pbuilder/distros"
 c_pbuilder_output_dir="/var/cache/pbuilder/result"
@@ -60,8 +60,8 @@ Example (mandatory -> optional -> command):
     export PPA_PAK_PACKAGE_NAME='ruby2.5'
     export PPA_PAK_VERSION='2.5.8-sav1'
     export PPA_PAK_COPYRIGHT=~/build/ruby-2.7.1/BSDL
-    export PPA_PAK_PPA_ADDRESS='ppa:saveriomiroddi/ruby-test-4'
-    export PPA_PAK_EMAIL='saverio.xxx@gmail.com'
+    export PPA_PAK_PPA_ADDRESS='ppa:saverio/ruby-test-4'
+    export PPA_PAK_EMAIL='saverio.notexists@gmail.com'
     export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
     export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
 
@@ -200,7 +200,7 @@ function create_debian_metadata {
 
   # The phony name is replaced at upload time.
   #
-  dh_make -p "${v_package_name}_1.2.3-foo4~5bar6" --yes --single --native "${v_dhmake_copyright_options[@]}" --email "$v_author_email"
+  dh_make -p "${v_package_name}_1.2.3-foo4~bar5" --yes --single --native "${v_dhmake_copyright_options[@]}" --email "$v_author_email"
   rm debian/*.ex debian/*.EX
 
   # The version change part of this file is performed at the distro cycle.
@@ -209,7 +209,7 @@ function create_debian_metadata {
   #
   # Sample:
   #
-  #     ruby2.5 (1.2.3-foo4~5bar6) unstable; urgency=medium
+  #     ruby2.5 (1.2.3-foo4~bar5) unstable; urgency=medium
   #
   #       * Initial Release.
   #
