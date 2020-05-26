@@ -176,8 +176,8 @@ function check_and_set_env_variables {
   v_vcs_git=${PPA_PAK_VCS_GIT:-}
 
   while IFS= read -r description_line; do
-    [[ -z description_line ]] && description_line=.
-    v_long_description+=" $description_line"
+    [[ -z $description_line ]] && description_line=.
+    v_long_description+=" $description_line"$'\n'
   done <<< ${PPA_PAK_LONG_DESCRIPTION:-$v_description}
 }
 
