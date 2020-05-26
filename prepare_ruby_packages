@@ -17,6 +17,8 @@ c_help="Usage: $(basename "$0") [-c|--cowbuild] [-u|--upload] [(-d|--distros) \$
 
 Downloads the latest stable Ruby versions, packages them, and uploads them.
 
+Requires \`prepare_ppa_package\` to be in the same directory as this file.
+
 Example: $(basename "$0") --cowbuild --upload --distros bionic ppa:saverio/ruby-test-4 sav1 saverio.notexists@gmail.com
 "
 
@@ -166,7 +168,7 @@ major/minor versions are not updated."
     export PPA_PAK_VERSION="${major_minor_patch_version}-${v_debian_version}"
     export PPA_PAK_COPYRIGHT="${v_build_directory}/BSDL"
 
-    prepare_ppa_package "$v_build_directory" "${v_cowbuild_option[@]}" "${v_upload_option[@]}"
+    "$(dirname "$0")/prepare_ppa_package" "$v_build_directory" "${v_cowbuild_option[@]}" "${v_upload_option[@]}"
   done
 }
 
