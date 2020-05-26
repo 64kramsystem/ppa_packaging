@@ -1,0 +1,365 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+################################################################################
+# Constants
+################################################################################
+
+c_supported_distros=(focal bionic xenial)
+c_supported_copyrights=(apache artistic bsd gpl gpl2 gpl3 isc lgpl lgpl2 lgl3 mit) # from the dh_make manpage
+c_default_section=utils
+export c_changelog_description="Upstream version"
+
+declare -A c_required_packages=([dh_make]=dh-make [debuild]=devscripts [cowbuilder]=cowbuilder)
+
+# Version 9 requires special treatment - debhelper_build_depedency.
+declare -A c_debhelper_distro_versions=([focal]=12 [bionic]=11 [xenial]=9)
+c_package_ppa_version=0
+# Requires a subdirectory named <distroname> for each distro build environment.
+c_pbuilder_distros_base_path="/var/cache/pbuilder/distros"
+c_pbuilder_output_dir="/var/cache/pbuilder/result"
+
+c_help="Usage: $(basename "$0") [options] <project_directory>
+
+Requires the following packages to be installed: $(IFS=,; echo "${c_required_packages[*]}").
+
+Parameters:
+
+-c|--cowbuild:              Build with cowbuilder before uploading
+-u|--no-upload:             Don't upload the package
+-t|--no-test:               Don't execute the test target (overrides the \`dh_auto_test\` rule)
+
+Environment-variable parameters (mandatory):
+
+- \$PPA_PAK_PACKAGE_NAME
+- \$PPA_PAK_VERSION
+- \$PPA_PAK_COPYRIGHT         : Filename of the copyright file, or (supported) copyright name (see below)
+- \$PPA_PAK_PPA_ADDRESS
+- \$PPA_PAK_EMAIL
+- \$PPA_PAK_DESCRIPTION
+- \$PPA_PAK_HOMEPAGE
+
+Environment-variable parameters (optional):
+
+- \$PPA_PAK_BUILD_DEPS        : Comma-separed list of build dependencies
+- \$PPA_PAK_DEPS              : Comma-separed list of dependencies
+- \$PPA_PAK_DISTROS:          : Comma-separed list of distros to build; defaults to all the supported ones (see below)
+- \$PPA_PAK_LONG_DESCRIPTION  : Long package description; defaults to the value of \$PPA_PAK_DESCRIPTION
+- \$PPA_PAK_SECTION           : Package section; defaults to \`$c_default_section\`
+- \$PPA_PAK_VCS_BROWSER       : Source project homepage
+- \$PPA_PAK_VCS_GIT           : Source project git address
+
+The supported standard copyrights are: $(IFS=,; echo "${c_supported_copyrights[*]}").
+The supported distributions are: $(IFS=,; echo "${c_supported_distros[*]}").
+
+Example (mandatory -> optional -> command):
+
+    export PPA_PAK_PACKAGE_NAME='ruby2.5'
+    export PPA_PAK_VERSION='2.5.8-sav1'
+    export PPA_PAK_COPYRIGHT=~/build/ruby-2.7.1/BSDL
+    export PPA_PAK_PPA_ADDRESS='ppa:saveriomiroddi/ruby-test-4'
+    export PPA_PAK_EMAIL='saverio.xxx@gmail.com'
+    export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
+    export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
+
+    export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates' # incomplete
+    export PPA_PAK_DEPS='libgmp-dev'
+    export PPA_PAK_DISTROS='bionic,focal'
+    export PPA_PAK_LONG_DESCRIPTION=\$'Ruby is the\ninterpreted scripting language\nfor quick and easy'
+    export PPA_PAK_SECTION='interpreters'
+    export PPA_PAK_VCS_BROWSER='https://github.com/ruby/ruby/'
+    export PPA_PAK_VCS_GIT='https://github.com/ruby/ruby.git'
+
+    $(basename "$0") ~/build/ruby-2.7.1
+"
+
+################################################################################
+# Variables
+################################################################################
+
+v_cowbuild=  # `1`: true; anything else: false
+v_no_upload= # `1`: true; anything else: false
+v_no_test=   # `1`: true; anything else: false
+v_project_directory=
+
+export v_package_name=
+export v_package_version_with_debian=
+v_dhmake_copyright_options=()
+export v_ppa_address=
+export v_author_email=
+export v_description=
+export v_homepage=
+
+export v_build_depends=()
+export v_depends=()
+export v_build_distros=()
+export v_long_description=
+export v_section=
+export v_vcs_browser=
+export v_vcs_git=
+
+################################################################################
+# MAIN STAGES
+################################################################################
+
+function decode_commandline_options {
+  eval set -- "$(getopt --options hcut --long help,cowbuild,no-upload,no-test -- "$@")"
+
+  while true ; do
+    case "$1" in
+      -h|--help)
+        echo "$c_help"
+        exit 0 ;;
+      -c|--cowbuild)
+        v_cowbuild=1
+        shift ;;
+      -u|--no-upload)
+        v_no_upload=1
+        shift ;;
+      -t|--no-test)
+        v_no_test=1
+        shift ;;
+      --)
+        shift
+        break ;;
+    esac
+  done
+
+  if [[ $# -ne 1 ]]; then
+    echo "$c_help"
+    exit 1
+  fi
+
+  v_project_directory=$1
+}
+
+function check_and_set_env_variables {
+  v_package_name=$PPA_PAK_PACKAGE_NAME
+  v_package_version_with_debian=$PPA_PAK_VERSION
+
+  if [[ -f "$PPA_PAK_COPYRIGHT" ]]; then
+    v_dhmake_copyright_options=(--copyright custom --copyrightfile "$PPA_PAK_COPYRIGHT")
+  else
+    v_dhmake_copyright_options=(--copyright "$PPA_PAK_COPYRIGHT")
+  fi
+
+  v_ppa_address=$PPA_PAK_PPA_ADDRESS
+  v_author_email=$PPA_PAK_EMAIL
+  v_description=$PPA_PAK_DESCRIPTION
+  v_homepage=$PPA_PAK_HOMEPAGE
+
+  if [[ ${PPA_PAK_BUILD_DEPS:-} == *' '* ]]; then
+    >&2 echo "The variable \$PPA_PAK_BUILD_DEPS can't contain spaces; use comma to separate the packages."
+    exit 1
+  else
+    mapfile -td, v_build_depends < <(echo -n "${PPA_PAK_BUILD_DEPS:-}")
+  fi
+
+  if [[ ${PPA_PAK_DEPS:-} == *' '* ]]; then
+    >&2 echo "The variable \$PPA_PAK_DEPS can't contain spaces; use comma to separate the packages."
+    exit 1
+  else
+    mapfile -td, v_depends < <(echo -n "${PPA_PAK_DEPS:-}")
+  fi
+
+  if [[ ${PPA_PAK_DISTROS:-} != "" ]]; then
+    mapfile -td, v_build_distros < <(echo -n "$PPA_PAK_DISTROS")
+  else
+    v_build_distros=("${c_supported_distros[@]}")
+  fi
+
+  v_section=${PPA_PAK_SECTION:-$c_default_section}
+  v_vcs_browser=${PPA_PAK_VCS_BROWSER:-}
+  v_vcs_git=${PPA_PAK_VCS_GIT:-}
+
+  while IFS= read -r description_line; do
+    [[ -z description_line ]] && description_line=.
+    v_long_description+=" $description_line"
+  done <<< ${PPA_PAK_LONG_DESCRIPTION:-$v_description}
+}
+
+function check_required_packages {
+  for executable in "${!c_required_packages[@]}"; do
+    if [[ ! -x "$(command -v "$executable")" ]]; then
+      local package=${c_required_packages[$executable]}
+      >&2 echo "The executable \`$executable\` hasn't been found; please install the package \`$package\`".
+      exit 1
+    fi
+  done
+}
+
+function switch_directory {
+  cd "$v_project_directory"
+}
+
+function create_debian_metadata {
+  rm -rf debian
+
+  # The phony name is replaced at upload time.
+  #
+  # Using `$PWD/` is crucial (or `../`), since the path is relative to the `debian` directory.
+  #
+  dh_make -p "${v_package_name}_1.2.3-foo4~5bar6" --yes --single --native "${v_dhmake_copyright_options[@]}" --email "$v_author_email"
+  rm debian/*.ex debian/*.EX
+
+  # The version change part of this file is performed at the distro cycle.
+  #
+  # `dch` takes care of this, however, it doesn't allow editing of an existing entry.
+  #
+  # Sample:
+  #
+  #     ruby2.5 (1.2.3-foo4~5bar6) unstable; urgency=medium
+  #
+  #       * Initial Release.
+  #
+  #      -- Saverio Miroddi <saverio.xxx@gmail.com>  Thu, 21 May 2020 11:58:40 +0200
+  #
+  perl -i -pe 's/Initial Release/$ENV{c_changelog_description}/' debian/changelog
+
+  if [[ ${#v_build_depends[@]} -gt 0 ]]; then
+    build_depends=$(IFS=,; echo "${v_build_depends[*]}") perl -i -pe 's/^Build-Depends: .*\K/,$ENV{build_depends}/' debian/control
+  fi
+
+  if [[ ${#v_depends[@]} -gt 0 ]]; then
+    depends=$(IFS=,; echo "${v_depends[*]}") perl -i -pe 's/^Depends: .*\K/,$ENV{depends}/' debian/control
+  fi
+
+  perl -i -pe 's/^Section: \K.*/$ENV{v_section}/'                        debian/control
+  perl -i -pe 's/^Homepage: \K.*/$ENV{v_homepage}/'                      debian/control
+  perl -i -pe 's/^Description: \K.*/$ENV{v_description}/'                debian/control
+  perl -i -pe 's/^ <insert long description.*/$ENV{v_long_description}/' debian/control
+
+  [[ -n $v_vcs_browser ]] && perl -i -pe 's/^#(Vcs-Browser:).*/$1 $ENV{v_vcs_browser}/' debian/control
+  [[ -n $v_vcs_git     ]] && perl -i -pe 's/^#(Vcs-Git:).*/$1 $ENV{v_vcs_git}/'         debian/control
+
+  # Leave the default as is (`any`); we select architectures built via PPA.
+  #
+  # perl -i -pe 's/^(Architecture:) .*/$1 amd64/' debian/control
+
+  # Enable verbose log; helps debugging.
+  #
+  perl -i -pe 's/.*(export DH_VERBOSE).*/$1=1/' debian/rules
+
+  # The `dh_dwz` target fails, because `dwz` finds nothing compressible, so we disable it.
+  #
+  printf $'override_dh_dwz:\n\techo Skipping dh_dwz target\n\n' >> debian/rules
+
+  # Build using the default builder configuration, which is:
+  #
+  #     ./configure --build=x86_64-linux-gnu --prefix=/usr --includedir=\${prefix}/include --mandir=\${prefix}/share/man
+  #       --infodir=\${prefix}/share/info --sysconfdir=/etc --localstatedir=/var --disable-silent-rules --libdir=\${prefix}/lib/x86_64-linux-gnu
+  #       --runstatedir=/run --disable-maintainer-mode --disable-dependency-tracking`
+  #
+  # Otherwise, `dpkg-deb` (in the `dh_builddeb` target) complains that files are installed under
+  # `/usr/local` (which breaks the debian standard).
+  #
+  # printf $'override_dh_auto_configure:\n\t./configure --prefix=/usr/local\n\n' >> debian/rules
+
+  # Another target with `/usr/local` problems. See: https://unix.stackexchange.com/a/386838.
+  #
+  # printf $'override_dh_usrlocal:\n\techo Skipping dh_usrlocal target\n\n' >> debian/rules
+
+  # Disable testing.
+  #
+  if [[ $v_no_test == "1" ]]; then
+    printf $'override_dh_auto_test:\n\techo Skipping dh_auto_test target\n\n' >> debian/rules
+  fi
+}
+
+function hold_sudo_permissions {
+  sudo -v
+
+  while true; do
+    sudo -n true
+    sleep 60
+    kill -0 "$$" || exit
+  done 2>/dev/null &
+}
+
+function build_and_upload_package {
+  for distribution in "${v_build_distros[@]}"; do
+    local package_version_with_ppa=${v_package_version_with_debian}~${distribution}${c_package_ppa_version}
+    local package_name_with_version_with_ppa="${v_package_name}_${package_version_with_ppa}"
+
+    echo ">>> Building $package_name_with_version_with_ppa ($distribution)"
+
+    # See previous note about `dch` unfitness.
+    #
+    sed -i -E "1c$v_package_name ($package_version_with_ppa) ${distribution}; urgency=medium" debian/changelog
+
+    # debuild uses the `debhelper-compat (= ...)` dependency version to find the compatibility level,
+    # However, on xenial, the package is `debhelper`, so this strategy can't be used.
+    #
+    debhelper_dependency=$(prepare_debhelper_dependency "${c_debhelper_distro_versions[$distribution]}") \
+      perl -i -pe 's/debhelper-compat \(.+?\)/$ENV{debhelper_dependency}/' debian/control
+
+    # Options order matters!
+    #
+    # `--no-tgz-check`:  don't search for the original when a debian version is present
+    # `--no-lintian`:    save time; for testing purposes
+    # `-d`:              skip the dependency checks, due to `debhelper` on xenial (debuild assumes
+    #                    that the build happens on the same machine)
+    # `-S`:              build a source package; `--build=source` is equivalent, but oddly, doesn't find
+    #                    the changes file during build
+    # `-Zgzip`:          fast compression; for testing purposes.
+    # `--tar-ignore=//`: the invoke `dpkg-source` filters out some files, including `.gitignore`, which
+    #                    are needed (!!) by some bundled gems this sets a phony pattern.
+    #
+    # Creates `debian/files`, which can be ignored.
+    #
+    debuild --no-tgz-check --no-lintian -d -S -Zgzip --tar-ignore=//
+
+    if [[ $v_cowbuild == "1" ]]; then
+      sudo cowbuilder --build --basepath "$c_pbuilder_distros_base_path/$distribution" --distribution "$distribution" "../${package_name_with_version_with_ppa}.dsc"
+      echo ">>> Built package: $c_pbuilder_output_dir/${package_name_with_version_with_ppa}_amd64.deb"
+    fi
+
+    if [[ $v_no_upload != "1" ]]; then
+      dput "$v_ppa_address" "../${package_name_with_version_with_ppa}_source.changes"
+    fi
+
+    echo "--------------------------------------------------------------------------------"
+  done
+}
+
+################################################################################
+# HELPERS
+################################################################################
+
+# Creates `debian/compat`, if required, and returns the build-dependency package
+# definition.
+#
+# $1: debhelper version
+#
+function prepare_debhelper_dependency {
+  if [[ $1 -le 9 ]]; then
+    # Insanity. In case of v9:
+    #
+    # - the package is `debhelper`;
+    # - debuild requires `debian/compat` to be specified; but it must not be specified
+    #   when the package is `debhelper-compat` (v11+);
+    # - `= 9` can't be specified, because the actual package version is (currently)
+    #   `9.20160115ubuntu3`; for unclear reasons, with `debhelper-compat`, `= X` works
+    #    with versions `X.Y` (eg. 11.2).
+    #
+    echo -n "debhelper (>= 9)"
+    echo "9" > debian/compat
+  else
+    echo -n "debhelper-compat (= $1)"
+  fi
+}
+
+################################################################################
+# EXECUTION
+################################################################################
+
+decode_commandline_options "$@"
+check_and_set_env_variables
+check_required_packages
+switch_directory
+create_debian_metadata
+[[ $v_cowbuild == "1" ]] && hold_sudo_permissions
+build_and_upload_package
