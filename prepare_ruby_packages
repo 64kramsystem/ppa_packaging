@@ -16,6 +16,8 @@ c_ruby_downloads_page_file="$c_temp_dir/downloads.html"
 c_help="Usage: $(basename "$0") [-c|--cowbuild] [-u|--upload] [(-d|--distros) \$distros] [-l|--latest] <ppa_address> <debian_version> <email>
 
 Downloads the latest stable Ruby versions, packages them, and uploads them.
+
+Example: $(basename "$0") --cowbuild --upload --distros bionic ppa:saverio/ruby-test-4 sav1 saverio.notexists@gmail.com
 "
 
 # Internal vars
