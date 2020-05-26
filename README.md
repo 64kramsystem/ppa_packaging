@@ -4,8 +4,6 @@ Scripts for preparing PPA packages.
 
 Their purpose and working has been described in [an article](https://saveriomiroddi.github.io/Learn-to-prepare-PPA-packages-by-setting-up-a-Ruby-PPA/) in my blog.
 
-## `prepare_ppa_package`
-
 The core script is `prepare_ppa_package`:
 
 ```
@@ -65,11 +63,11 @@ Example (mandatory -> optional -> command):
     prepare_ppa_package ~/build/ruby-2.7.1
 ```
 
-## `prepare_ruby_packages`
-
-`prepare_ruby_packages` is a wrapper, that prepares Ruby packages.
+`prepare_ruby_packages` is a wrapper that prepares Ruby packages:
 
 ```
+$ prepare_ruby_packages --help
+
 Usage: prepare_ruby_packages [-c|--cowbuild] [-u|--upload] [(-d|--distros) $distros] [-l|--latest] <ppa_address> <debian_version> <email>
 
 Downloads the latest stable Ruby versions, packages them, and uploads them.
