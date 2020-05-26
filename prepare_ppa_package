@@ -200,8 +200,6 @@ function create_debian_metadata {
 
   # The phony name is replaced at upload time.
   #
-  # Using `$PWD/` is crucial (or `../`), since the path is relative to the `debian` directory.
-  #
   dh_make -p "${v_package_name}_1.2.3-foo4~5bar6" --yes --single --native "${v_dhmake_copyright_options[@]}" --email "$v_author_email"
   rm debian/*.ex debian/*.EX
 
