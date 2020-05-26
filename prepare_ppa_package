@@ -339,9 +339,8 @@ function prepare_debhelper_dependency {
     # - the package is `debhelper`;
     # - debuild requires `debian/compat` to be specified; but it must not be specified
     #   when the package is `debhelper-compat` (v11+);
-    # - `= 9` can't be specified, because the actual package version is (currently)
-    #   `9.20160115ubuntu3`; for unclear reasons, with `debhelper-compat`, `= X` works
-    #    with versions `X.Y` (eg. 11.2).
+    # - `= 9` doesn't work (the current package version is `9.20160115ubuntu3`), although,
+    #   with `debhelper-compat`, `= X` works with versions `X.Y` (eg. `11.2`).
     #
     echo -n "debhelper (>= 9)"
     echo "9" > debian/compat
