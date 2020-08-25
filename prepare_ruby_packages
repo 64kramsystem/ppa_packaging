@@ -11,6 +11,8 @@ shopt -s inherit_errexit
 # Constants
 
 c_temp_dir=$(dirname "$(mktemp)")/ruby_packages
+c_data_directory=/var/lib/ruby_ppa_packaging
+c_data_files_prefix=packaged_
 c_ruby_downloads_link="https://www.ruby-lang.org/en/downloads"
 c_ruby_downloads_page_file="$c_temp_dir/downloads.html"
 c_help="Usage: $(basename "$0") [-c|--cowbuild] [-u|--upload] [(-d|--distros) \$distros] [-l|--latest] <ppa_address> <debian_version> <email>
@@ -81,6 +83,13 @@ function notify_build_dir {
   fi
 }
 
+function check_data_directory {
+  if [[ ! -d $c_data_directory ]]; then
+    >&2 echo "Data directory '$c_data_directory' not found!"
+    exit 1
+  fi
+}
+
 function prepare_temp_dir {
   echo "Preparing temp dir ($c_temp_dir)..."
   rm -rf "$c_temp_dir"
@@ -124,11 +133,11 @@ function find_and_set_stable_version_links {
     local versions_to_download=255
   fi
 
-  v_stable_version_links=($(
+  mapfile -t v_stable_version_links < <(
     grep -zoP '(?s)<strong>Stable releases.*?<strong>Not maintained' "$c_ruby_downloads_page_file" |
     grep -aoP 'https://cache\.ruby-lang\.org.*?\.tar\.gz' |
     head -n "$versions_to_download"
-  ))
+  )
 }
 
 function download_and_unpack_tarballs {
@@ -161,19 +170,29 @@ major/minor versions are not updated."
   export PPA_PAK_VCS_GIT='https://github.com/ruby/ruby.git'
 
   for v_build_directory in "$c_temp_dir"/*/; do
-    local major_minor_patch_version=$(echo "$v_build_directory" | perl -ne '/ruby-(.*?)\/$/ && print $1')
+    local major_minor_patch_version
+    major_minor_patch_version=$(echo "$v_build_directory" | perl -ne '/ruby-(.*?)\/$/ && print $1')
     local major_minor_version=${major_minor_patch_version%.*}
 
-    export PPA_PAK_PACKAGE_NAME="ruby${major_minor_version}"
-    export PPA_PAK_VERSION="${major_minor_patch_version}-${v_debian_version}"
-    export PPA_PAK_COPYRIGHT="${v_build_directory}/BSDL"
+    local build_tracking_file=${c_data_directory}/${c_data_files_prefix}${major_minor_patch_version}
 
-    "$(dirname "$0")/prepare_ppa_package" "$v_build_directory" "${v_cowbuild_option[@]}" "${v_upload_option[@]}"
+    if [[ ! -f $build_tracking_file ]]; then
+      export PPA_PAK_PACKAGE_NAME="ruby${major_minor_version}"
+      export PPA_PAK_VERSION="${major_minor_patch_version}-${v_debian_version}"
+      export PPA_PAK_COPYRIGHT="${v_build_directory}/BSDL"
+
+      "$(dirname "$0")/prepare_ppa_package" "$v_build_directory" "${v_cowbuild_option[@]}" "${v_upload_option[@]}"
+
+      touch "$build_tracking_file"
+    else
+      echo "Version $major_minor_patch_version has already been packaged; skipping..."
+    fi
   done
 }
 
 decode_commandline_options "$@"
 trap notify_build_dir EXIT
+check_data_directory
 prepare_temp_dir
 download_stable_versions_webpage
 find_and_set_stable_version_links
