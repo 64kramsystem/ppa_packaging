@@ -133,11 +133,11 @@ function find_and_set_stable_version_links {
     local versions_to_download=255
   fi
 
-  v_stable_version_links=($(
+  mapfile -t v_stable_version_links < <(
     grep -zoP '(?s)<strong>Stable releases.*?<strong>Not maintained' "$c_ruby_downloads_page_file" |
     grep -aoP 'https://cache\.ruby-lang\.org.*?\.tar\.gz' |
     head -n "$versions_to_download"
-  ))
+  )
 }
 
 function download_and_unpack_tarballs {
@@ -170,7 +170,8 @@ major/minor versions are not updated."
   export PPA_PAK_VCS_GIT='https://github.com/ruby/ruby.git'
 
   for v_build_directory in "$c_temp_dir"/*/; do
-    local major_minor_patch_version=$(echo "$v_build_directory" | perl -ne '/ruby-(.*?)\/$/ && print $1')
+    local major_minor_patch_version
+    major_minor_patch_version=$(echo "$v_build_directory" | perl -ne '/ruby-(.*?)\/$/ && print $1')
     local major_minor_version=${major_minor_patch_version%.*}
 
     local build_tracking_file=${c_data_directory}/${c_data_files_prefix}${major_minor_patch_version}
