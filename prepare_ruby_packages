@@ -96,8 +96,8 @@ function prepare_temp_dir {
   mkdir "$c_temp_dir"
 }
 
-function download_stable_versions_webpage {
-  echo "Downloading Ruby stable version webpage..."
+function download_ruby_downloads_webpage {
+  echo "Downloading Ruby downloads webpage..."
   wget -q "$c_ruby_downloads_link" -O "$c_ruby_downloads_page_file"
 }
 
@@ -194,7 +194,7 @@ decode_commandline_options "$@"
 trap notify_build_dir EXIT
 check_data_directory
 prepare_temp_dir
-download_stable_versions_webpage
+download_ruby_downloads_webpage
 find_and_set_stable_version_links
 download_and_unpack_tarballs
 prepare_packages
