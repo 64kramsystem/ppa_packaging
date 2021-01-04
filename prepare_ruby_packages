@@ -101,24 +101,33 @@ function download_ruby_downloads_webpage {
   wget -q "$c_ruby_downloads_link" -O "$c_ruby_downloads_page_file"
 }
 
-# Source (prettified):
+# Source (prettified; not exact):
 #
 #     <strong>Stable releases:</strong>
 #     <ul>
 #       <li>
-#         <a href="https://cache.ruby-lang.org/pub/ruby/2.7/ruby-2.7.1.tar.gz">Ruby 2.7.1</a>
-#         <br>sha256: d418483bdd0000576c1370571121a6eb24582116db0b7bb2005e90e250eae418</br>
+#         <a href="https://cache.ruby-lang.org/pub/ruby/2.7/ruby-2.7.1.tar.gz">Ruby 2.7.1</a><br/>
+#         sha256: d418483bdd0000576c1370571121a6eb24582116db0b7bb2005e90e250eae418
 #         <li>
-#           <a href="https://cache.ruby-lang.org/pub/ruby/2.6/ruby-2.6.6.tar.gz">Ruby 2.6.6</a>
-#           <br>sha256: 364b143def360bac1b74eb56ed60b1a0dca6439b00157ae11ff77d5cd2e92291</br>
+#           <a href="https://cache.ruby-lang.org/pub/ruby/2.6/ruby-2.6.6.tar.gz">Ruby 2.6.6</a><br/>
+#           sha256: 364b143def360bac1b74eb56ed60b1a0dca6439b00157ae11ff77d5cd2e92291
 #         </li>
+#       </li>
+#       <li>
+#         <strong>Preview releases:</strong>
+#         <ul>
+#           <li>
+#             <a href="https://cache.ruby-lang.org/pub/ruby/3.0/ruby-3.0.0-preview1.tar.gz">Ruby 3.0.0-preview1</a><br/>
+#             sha256: ce8bd7534e7ec2a870b24d2145ea20e9bbe5b2d76b7dfa1102dbee5785253105
+#           </li>
+#         </ul>
 #       </li>
 #       <li>
 #         <strong>In security maintenance phase (will EOL soon!):</strong>
 #         <ul>
 #           <li>
-#             <a href="https://cache.ruby-lang.org/pub/ruby/2.5/ruby-2.5.8.tar.gz">Ruby 2.5.8</a>
-#             <br>sha256: 6c0bdf07876c69811a9e7dc237c43d40b1cb6369f68e0e17953d7279b524ad9a</br>
+#             <a href="https://cache.ruby-lang.org/pub/ruby/2.5/ruby-2.5.8.tar.gz">Ruby 2.5.8</a><br/>
+#             sha256: 6c0bdf07876c69811a9e7dc237c43d40b1cb6369f68e0e17953d7279b524ad9a
 #           </li>
 #         </ul>
 #         <li>
