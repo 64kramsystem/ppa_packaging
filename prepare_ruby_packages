@@ -11,13 +11,15 @@ shopt -s inherit_errexit
 # Constants
 
 c_temp_dir=$(dirname "$(mktemp)")/ruby_packages
-c_data_directory=/var/lib/ruby_ppa_packaging
+c_data_directory=/tmp/ruby_ppa_packaging
 c_data_files_prefix=packaged_
 c_ruby_downloads_link="https://www.ruby-lang.org/en/downloads"
 c_ruby_downloads_page_file="$c_temp_dir/downloads.html"
 c_help="Usage: $(basename "$0") [-c|--cowbuild] [-u|--upload] [(-d|--distros) \$distros] [-l|--latest] <ppa_address> <debian_version> <email>
 
 Downloads the latest stable Ruby versions, packages them, and uploads them.
+
+WATCH OUT! Preview/release candidate versions are not built (see code for more details).
 
 Requires \`prepare_ppa_package\` to be in the same directory as this file.
 
@@ -101,6 +103,14 @@ function download_ruby_downloads_webpage {
   wget -q "$c_ruby_downloads_link" -O "$c_ruby_downloads_page_file"
 }
 
+# Preview/Release candidate versions are skipped. While they can be downloaded and built regularly,
+# the version suffixes `-preview/-rc` cause the PPA to reject the release version, because according
+# to Debian version naming, it's preceding.
+# There are different approaches to this, for example adding a `-release` suffix to release versions,
+# however, just discarding non-release versions is good enough, and by far the simplest.
+# If a non-release package is accidentally uploaded to a PPA, it's possible to delete it, then upload
+# the release version.
+#
 # Source (prettified; not exact):
 #
 #     <strong>Stable releases:</strong>
@@ -145,8 +155,10 @@ function find_and_set_stable_version_links {
   mapfile -t v_stable_version_links < <(
     grep -zoP '(?s)<strong>Stable releases.*?<strong>Not maintained' "$c_ruby_downloads_page_file" |
     grep -aoP 'https://cache\.ruby-lang\.org.*?\.tar\.gz' |
+    grep -avP 'ruby-\d+\.\d+\.\d+-(rc|preview)\d+\.' |
     head -n "$versions_to_download"
   )
+  exit 1
 }
 
 function download_and_unpack_tarballs {
@@ -205,5 +217,5 @@ check_data_directory
 prepare_temp_dir
 download_ruby_downloads_webpage
 find_and_set_stable_version_links
-download_and_unpack_tarballs
-prepare_packages
+# download_and_unpack_tarballs
+# prepare_packages
