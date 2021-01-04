@@ -11,11 +11,15 @@ shopt -s inherit_errexit
 # Constants
 
 c_temp_dir=$(dirname "$(mktemp)")/ruby_packages
+c_data_directory=/tmp/ruby_ppa_packaging
+c_data_files_prefix=packaged_
 c_ruby_downloads_link="https://www.ruby-lang.org/en/downloads"
 c_ruby_downloads_page_file="$c_temp_dir/downloads.html"
 c_help="Usage: $(basename "$0") [-c|--cowbuild] [-u|--upload] [(-d|--distros) \$distros] [-l|--latest] <ppa_address> <debian_version> <email>
 
 Downloads the latest stable Ruby versions, packages them, and uploads them.
+
+WATCH OUT! Preview/release candidate versions are not built (see code for more details).
 
 Requires \`prepare_ppa_package\` to be in the same directory as this file.
 
@@ -81,35 +85,59 @@ function notify_build_dir {
   fi
 }
 
+function check_data_directory {
+  if [[ ! -d $c_data_directory ]]; then
+    >&2 echo "Data directory '$c_data_directory' not found!"
+    exit 1
+  fi
+}
+
 function prepare_temp_dir {
   echo "Preparing temp dir ($c_temp_dir)..."
   rm -rf "$c_temp_dir"
   mkdir "$c_temp_dir"
 }
 
-function download_stable_versions_webpage {
-  echo "Downloading Ruby stable version webpage..."
+function download_ruby_downloads_webpage {
+  echo "Downloading Ruby downloads webpage..."
   wget -q "$c_ruby_downloads_link" -O "$c_ruby_downloads_page_file"
 }
 
-# Source (prettified):
+# Preview/Release candidate versions are skipped. While they can be downloaded and built regularly,
+# the version suffixes `-preview/-rc` cause the PPA to reject the release version, because according
+# to Debian version naming, it's preceding.
+# There are different approaches to this, for example adding a `-release` suffix to release versions,
+# however, just discarding non-release versions is good enough, and by far the simplest.
+# If a non-release package is accidentally uploaded to a PPA, it's possible to delete it, then upload
+# the release version.
+#
+# Source (prettified; not exact):
 #
 #     <strong>Stable releases:</strong>
 #     <ul>
 #       <li>
-#         <a href="https://cache.ruby-lang.org/pub/ruby/2.7/ruby-2.7.1.tar.gz">Ruby 2.7.1</a>
-#         <br>sha256: d418483bdd0000576c1370571121a6eb24582116db0b7bb2005e90e250eae418</br>
+#         <a href="https://cache.ruby-lang.org/pub/ruby/2.7/ruby-2.7.1.tar.gz">Ruby 2.7.1</a><br/>
+#         sha256: d418483bdd0000576c1370571121a6eb24582116db0b7bb2005e90e250eae418
 #         <li>
-#           <a href="https://cache.ruby-lang.org/pub/ruby/2.6/ruby-2.6.6.tar.gz">Ruby 2.6.6</a>
-#           <br>sha256: 364b143def360bac1b74eb56ed60b1a0dca6439b00157ae11ff77d5cd2e92291</br>
+#           <a href="https://cache.ruby-lang.org/pub/ruby/2.6/ruby-2.6.6.tar.gz">Ruby 2.6.6</a><br/>
+#           sha256: 364b143def360bac1b74eb56ed60b1a0dca6439b00157ae11ff77d5cd2e92291
 #         </li>
+#       </li>
+#       <li>
+#         <strong>Preview releases:</strong>
+#         <ul>
+#           <li>
+#             <a href="https://cache.ruby-lang.org/pub/ruby/3.0/ruby-3.0.0-preview1.tar.gz">Ruby 3.0.0-preview1</a><br/>
+#             sha256: ce8bd7534e7ec2a870b24d2145ea20e9bbe5b2d76b7dfa1102dbee5785253105
+#           </li>
+#         </ul>
 #       </li>
 #       <li>
 #         <strong>In security maintenance phase (will EOL soon!):</strong>
 #         <ul>
 #           <li>
-#             <a href="https://cache.ruby-lang.org/pub/ruby/2.5/ruby-2.5.8.tar.gz">Ruby 2.5.8</a>
-#             <br>sha256: 6c0bdf07876c69811a9e7dc237c43d40b1cb6369f68e0e17953d7279b524ad9a</br>
+#             <a href="https://cache.ruby-lang.org/pub/ruby/2.5/ruby-2.5.8.tar.gz">Ruby 2.5.8</a><br/>
+#             sha256: 6c0bdf07876c69811a9e7dc237c43d40b1cb6369f68e0e17953d7279b524ad9a
 #           </li>
 #         </ul>
 #         <li>
@@ -124,11 +152,13 @@ function find_and_set_stable_version_links {
     local versions_to_download=255
   fi
 
-  v_stable_version_links=($(
+  mapfile -t v_stable_version_links < <(
     grep -zoP '(?s)<strong>Stable releases.*?<strong>Not maintained' "$c_ruby_downloads_page_file" |
     grep -aoP 'https://cache\.ruby-lang\.org.*?\.tar\.gz' |
+    grep -avP 'ruby-\d+\.\d+\.\d+-(rc|preview)\d+\.' |
     head -n "$versions_to_download"
-  ))
+  )
+  exit 1
 }
 
 function download_and_unpack_tarballs {
@@ -161,21 +191,31 @@ major/minor versions are not updated."
   export PPA_PAK_VCS_GIT='https://github.com/ruby/ruby.git'
 
   for v_build_directory in "$c_temp_dir"/*/; do
-    local major_minor_patch_version=$(echo "$v_build_directory" | perl -ne '/ruby-(.*?)\/$/ && print $1')
+    local major_minor_patch_version
+    major_minor_patch_version=$(echo "$v_build_directory" | perl -ne '/ruby-(.*?)\/$/ && print $1')
     local major_minor_version=${major_minor_patch_version%.*}
 
-    export PPA_PAK_PACKAGE_NAME="ruby${major_minor_version}"
-    export PPA_PAK_VERSION="${major_minor_patch_version}-${v_debian_version}"
-    export PPA_PAK_COPYRIGHT="${v_build_directory}/BSDL"
+    local build_tracking_file=${c_data_directory}/${c_data_files_prefix}${major_minor_patch_version}
 
-    "$(dirname "$0")/prepare_ppa_package" "$v_build_directory" "${v_cowbuild_option[@]}" "${v_upload_option[@]}"
+    if [[ ! -f $build_tracking_file ]]; then
+      export PPA_PAK_PACKAGE_NAME="ruby${major_minor_version}"
+      export PPA_PAK_VERSION="${major_minor_patch_version}-${v_debian_version}"
+      export PPA_PAK_COPYRIGHT="${v_build_directory}/BSDL"
+
+      "$(dirname "$0")/prepare_ppa_package" "$v_build_directory" "${v_cowbuild_option[@]}" "${v_upload_option[@]}"
+
+      touch "$build_tracking_file"
+    else
+      echo "Version $major_minor_patch_version has already been packaged; skipping..."
+    fi
   done
 }
 
 decode_commandline_options "$@"
 trap notify_build_dir EXIT
+check_data_directory
 prepare_temp_dir
-download_stable_versions_webpage
+download_ruby_downloads_webpage
 find_and_set_stable_version_links
-download_and_unpack_tarballs
-prepare_packages
+# download_and_unpack_tarballs
+# prepare_packages
