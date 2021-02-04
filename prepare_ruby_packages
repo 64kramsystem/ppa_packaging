@@ -158,7 +158,6 @@ function find_and_set_stable_version_links {
     grep -avP 'ruby-\d+\.\d+\.\d+-(rc|preview)\d+\.' |
     head -n "$versions_to_download"
   )
-  exit 1
 }
 
 function download_and_unpack_tarballs {
@@ -217,5 +216,5 @@ check_data_directory
 prepare_temp_dir
 download_ruby_downloads_webpage
 find_and_set_stable_version_links
-# download_and_unpack_tarballs
-# prepare_packages
+download_and_unpack_tarballs
+prepare_packages
