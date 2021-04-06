@@ -11,7 +11,7 @@ shopt -s inherit_errexit
 # Constants
 
 c_temp_dir=$(dirname "$(mktemp)")/ruby_packages
-c_data_directory=/tmp/ruby_ppa_packaging
+c_data_directory=/var/lib/ruby_ppa_packaging
 c_data_files_prefix=packaged_
 c_ruby_downloads_link="https://www.ruby-lang.org/en/downloads"
 c_ruby_downloads_page_file="$c_temp_dir/downloads.html"
@@ -22,6 +22,8 @@ Downloads the latest stable Ruby versions, packages them, and uploads them.
 WATCH OUT! Preview/release candidate versions are not built (see code for more details).
 
 Requires \`prepare_ppa_package\` to be in the same directory as this file.
+
+Requires the data directory \`$c_data_directory\` to be in place, with RW permissions for the current user; it is used to avoid building the same package more than once.
 
 Example: $(basename "$0") --cowbuild --upload --distros bionic ppa:saverio/ruby-test-4 sav1 saverio.notexists@gmail.com
 "
@@ -87,7 +89,7 @@ function notify_build_dir {
 
 function check_data_directory {
   if [[ ! -d $c_data_directory ]]; then
-    >&2 echo "Data directory '$c_data_directory' not found!"
+    >&2 echo "Data directory '$c_data_directory' not found! Please create it with permissions for the current user."
     exit 1
   fi
 }
