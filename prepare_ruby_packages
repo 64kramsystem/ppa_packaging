@@ -87,7 +87,7 @@ function notify_build_dir {
 
 function check_data_directory {
   if [[ ! -d $c_data_directory ]]; then
-    >&2 echo "Data directory '$c_data_directory' not found!"
+    >&2 echo "Data directory '$c_data_directory' not found! Please create it with permissions for the current user."
     exit 1
   fi
 }
