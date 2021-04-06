@@ -11,7 +11,7 @@ shopt -s inherit_errexit
 # Constants
 
 c_temp_dir=$(dirname "$(mktemp)")/ruby_packages
-c_data_directory=/tmp/ruby_ppa_packaging
+c_data_directory=/var/lib/ruby_ppa_packaging
 c_data_files_prefix=packaged_
 c_ruby_downloads_link="https://www.ruby-lang.org/en/downloads"
 c_ruby_downloads_page_file="$c_temp_dir/downloads.html"
