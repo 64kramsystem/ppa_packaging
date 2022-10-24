@@ -8,15 +8,14 @@ set -o nounset
 # Constants
 ################################################################################
 
-c_supported_distros=(focal bionic xenial)
+c_supported_distros=(focal bionic)
 c_supported_copyrights=(apache artistic bsd gpl gpl2 gpl3 isc lgpl lgpl2 lgl3 mit) # from the dh_make manpage
 c_default_section=utils
 export c_changelog_description="Upstream version"
 
 declare -A c_required_packages=([dh_make]=dh-make [debuild]=devscripts [cowbuilder]=cowbuilder)
 
-# Version 9 requires special treatment - debhelper_build_depedency.
-declare -A c_debhelper_distro_versions=([focal]=12 [bionic]=11 [xenial]=9)
+declare -A c_debhelper_distro_versions=([focal]=12 [bionic]=11)
 c_package_ppa_version=1
 # Requires a subdirectory named <distroname> for each distro build environment.
 c_pbuilder_distros_base_path="/var/cache/pbuilder/distros"
@@ -288,11 +287,9 @@ function build_and_upload_package {
     #
     sed -i -E "1c$v_package_name ($package_version_with_ppa) ${distribution}; urgency=medium" debian/changelog
 
-    # debuild uses the `debhelper-compat (= ...)` dependency version to find the compatibility level,
-    # However, on xenial, the package is `debhelper`, so this strategy can't be used.
+    # debuild uses the `debhelper-compat (= ...)` dependency version to find the compatibility level.
     #
-    debhelper_dependency=$(prepare_debhelper_dependency "${c_debhelper_distro_versions[$distribution]}") \
-      perl -i -pe 's/debhelper-compat \(.+?\)/$ENV{debhelper_dependency}/' debian/control
+    perl -i -pe "s/debhelper-compat \K\(.+?\)/(= ${c_debhelper_distro_versions[$distribution]})/" debian/control
 
     # Options order matters!
     #
@@ -321,32 +318,6 @@ function build_and_upload_package {
 
     echo "--------------------------------------------------------------------------------"
   done
-}
-
-################################################################################
-# HELPERS
-################################################################################
-
-# Creates `debian/compat`, if required, and returns the build-dependency package
-# definition.
-#
-# $1: debhelper version
-#
-function prepare_debhelper_dependency {
-  if [[ $1 -le 9 ]]; then
-    # Insanity. In case of v9:
-    #
-    # - the package is `debhelper`;
-    # - debuild requires `debian/compat` to be specified; but it must not be specified
-    #   when the package is `debhelper-compat` (v11+);
-    # - `= 9` doesn't work (the current package version is `9.20160115ubuntu3`), although,
-    #   with `debhelper-compat`, `= X` works with versions `X.Y` (eg. `11.2`).
-    #
-    echo -n "debhelper (>= 9)"
-    echo "9" > debian/compat
-  else
-    echo -n "debhelper-compat (= $1)"
-  fi
 }
 
 ################################################################################
