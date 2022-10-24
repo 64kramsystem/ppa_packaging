@@ -21,7 +21,7 @@ export c_changelog_description="Upstream version"
 
 declare -A c_required_packages=([dh_make]=dh-make [debuild]=devscripts [cowbuilder]=cowbuilder)
 
-declare -A c_debhelper_distro_versions=([focal]=12 [bionic]=11)
+declare -A c_debhelper_distro_versions=([jammy]=13 [focal]=12 [bionic]=11)
 c_package_ppa_version=1
 # Requires a subdirectory named <distroname> for each distro build environment.
 c_pbuilder_distros_base_path="/var/cache/pbuilder/distros"
