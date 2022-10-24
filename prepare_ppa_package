@@ -15,7 +15,7 @@ set -o nounset
 # - https://stackoverflow.com/a/1884785
 # - https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/#license-field
 #
-c_supported_copyrights=(apache artistic bsd gpl gpl2 gpl3 isc lgpl lgpl2 lgl3 mit)
+c_supported_copyrights=$(dh_make --help | perl -ne 'print $1 if /copyright file \((.*)\)/')
 c_default_section=utils
 export c_changelog_description="Upstream version"
 
@@ -58,7 +58,7 @@ Environment-variable parameters (optional):
 - \$PPA_PAK_VCS_BROWSER       : Source project homepage
 - \$PPA_PAK_VCS_GIT           : Source project git address
 
-The supported standard copyrights are: $(IFS=,; echo "${c_supported_copyrights[*]}").
+The supported standard copyrights are: $c_supported_copyrights.
 The supported distributions are: $(IFS=,; echo "${c_supported_distros[*]}").
 
 Example (mandatory -> optional -> command):
