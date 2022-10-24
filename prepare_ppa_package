@@ -57,7 +57,6 @@ Environment-variable parameters (optional):
 - \$PPA_PAK_DISTROS:          : Comma-separed list of distros to build; defaults to all the supported ones (see below)
 - \$PPA_PAK_LONG_DESCRIPTION  : Long package description; defaults to the value of \$PPA_PAK_DESCRIPTION
 - \$PPA_PAK_SECTION           : Package section; defaults to \`$c_default_section\`
-- \$PPA_PAK_VCS_BROWSER       : Source project homepage
 - \$PPA_PAK_VCS_GIT           : Source project git address
 
 The supported standard copyrights are: $c_supported_copyrights.
@@ -79,7 +78,6 @@ Example (mandatory -> optional -> command):
     export PPA_PAK_DISTROS='bionic,focal'
     export PPA_PAK_LONG_DESCRIPTION=\$'Ruby is the\ninterpreted scripting language\nfor quick and easy'
     export PPA_PAK_SECTION='interpreters'
-    export PPA_PAK_VCS_BROWSER='https://github.com/ruby/ruby/'
     export PPA_PAK_VCS_GIT='https://github.com/ruby/ruby.git'
 
     $(basename "$0") ~/build/ruby-2.7.1
@@ -181,8 +179,8 @@ function check_and_set_env_variables {
   fi
 
   v_section=${PPA_PAK_SECTION:-$c_default_section}
-  v_vcs_browser=${PPA_PAK_VCS_BROWSER:-}
   v_vcs_git=${PPA_PAK_VCS_GIT:-}
+  v_vcs_browser=$(echo "$v_vcs_git" | perl -ne '/(https:\/\/|git@)(.+?)[:\/](.+)\.git/ && print "https://$2/$3"')
 
   while IFS= read -r description_line; do
     [[ -z $description_line ]] && description_line=.
