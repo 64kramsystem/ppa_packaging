@@ -208,7 +208,7 @@ function create_debian_metadata {
   # The phony name is replaced at upload time.
   #
   dh_make -p "${v_package_name}_1.2.3-foo4~bar5" --yes --single --native "${v_dhmake_copyright_options[@]}" --email "$v_author_email"
-  rm debian/*.ex debian/*.EX
+  rm -f debian/*.ex debian/*.EX
 
   # The version change part of this file is performed at the distro cycle.
   #
