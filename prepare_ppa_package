@@ -9,7 +9,15 @@ set -o nounset
 ################################################################################
 
 c_supported_distros=(focal bionic)
-c_supported_copyrights=(apache artistic bsd gpl gpl2 gpl3 isc lgpl lgpl2 lgl3 mit) # from the dh_make manpage
+
+# dh_make has a limited whitelist, even if there are considerably more options available; see
+# https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/#license-short-name.
+#
+# Additionally, it seems that expressions like `GPL-2 | BSD` are valid; see:
+# - https://stackoverflow.com/a/1884785
+# - https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/#license-field
+#
+c_supported_copyrights=(apache artistic bsd gpl gpl2 gpl3 isc lgpl lgpl2 lgl3 mit)
 c_default_section=utils
 export c_changelog_description="Upstream version"
 
