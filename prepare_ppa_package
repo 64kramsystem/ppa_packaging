@@ -62,8 +62,9 @@ Environment-variable parameters (optional):
 The supported standard copyrights are: $c_supported_copyrights.
 The supported distributions are: $(IFS=,; echo "${c_supported_distros[*]}").
 
-Example (mandatory -> optional -> command):
+Example:
 
+    # Mandatory
     export PPA_PAK_PACKAGE_NAME='ruby2.5'
     export PPA_PAK_VERSION='2.5.8'
     export PPA_PAK_COPYRIGHT=~/build/ruby-2.7.1/BSDL
@@ -72,6 +73,7 @@ Example (mandatory -> optional -> command):
     export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
     export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
 
+    # Optional
     export PPA_PAK_DEBIAN_VERSION=mydeb1
     export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates' # incomplete
     export PPA_PAK_DEPS='libgmp-dev'
