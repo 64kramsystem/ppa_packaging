@@ -12,14 +12,14 @@ Example usage:
 
 ```sh
 export PPA_PAK_PACKAGE_NAME='ruby2.7'
-export PPA_PAK_VERSION='2.7.1-sav1'
+export PPA_PAK_VERSION='2.7.1'
 export PPA_PAK_COPYRIGHT=~/build/ruby-2.7.1/BSDL
 export PPA_PAK_PPA_ADDRESS='ppa:myusers/ruby-test-4'
 export PPA_PAK_EMAIL='myuser.notexists@gmail.com'
 export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
 export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
 
-prepare_ppa_package --cowbuild /path/to/ruby-2.7.1
+prepare_ppa_package --cowbuild /path/to/ruby_repo
 ```
 
 ## Licenses

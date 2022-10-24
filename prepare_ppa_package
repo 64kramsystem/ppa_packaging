@@ -22,6 +22,7 @@ export c_changelog_description="Upstream version"
 declare -A c_required_packages=([dh_make]=dh-make [debuild]=devscripts [cowbuilder]=cowbuilder)
 
 declare -A c_debhelper_distro_versions=([jammy]=13 [focal]=12 [bionic]=11)
+c_default_debian_version=ppa1
 c_package_ppa_version=1
 # Requires a subdirectory named <distroname> for each distro build environment.
 c_pbuilder_distros_base_path="/var/cache/pbuilder/distros"
@@ -41,7 +42,7 @@ Parameters:
 Environment-variable parameters (mandatory):
 
 - \$PPA_PAK_PACKAGE_NAME
-- \$PPA_PAK_VERSION
+- \$PPA_PAK_VERSION           : Software version, not including the Debian version
 - \$PPA_PAK_COPYRIGHT         : Filename of the copyright file, or (supported) copyright name (see below)
 - \$PPA_PAK_PPA_ADDRESS
 - \$PPA_PAK_EMAIL
@@ -50,6 +51,7 @@ Environment-variable parameters (mandatory):
 
 Environment-variable parameters (optional):
 
+- \$PPA_PAK_DEBIAN_VERSION    : Debian version; defaults to '$c_default_debian_version'
 - \$PPA_PAK_BUILD_DEPS        : Comma-separed list of build dependencies
 - \$PPA_PAK_DEPS              : Comma-separed list of dependencies
 - \$PPA_PAK_DISTROS:          : Comma-separed list of distros to build; defaults to all the supported ones (see below)
@@ -64,13 +66,14 @@ The supported distributions are: $(IFS=,; echo "${c_supported_distros[*]}").
 Example (mandatory -> optional -> command):
 
     export PPA_PAK_PACKAGE_NAME='ruby2.5'
-    export PPA_PAK_VERSION='2.5.8-sav1'
+    export PPA_PAK_VERSION='2.5.8'
     export PPA_PAK_COPYRIGHT=~/build/ruby-2.7.1/BSDL
-    export PPA_PAK_PPA_ADDRESS='ppa:saverio/ruby-test-4'
-    export PPA_PAK_EMAIL='saverio.notexists@gmail.com'
+    export PPA_PAK_PPA_ADDRESS='ppa:myuser/ruby-test'
+    export PPA_PAK_EMAIL='myuser@gmail.com'
     export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
     export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
 
+    export PPA_PAK_DEBIAN_VERSION=mydeb1
     export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates' # incomplete
     export PPA_PAK_DEPS='libgmp-dev'
     export PPA_PAK_DISTROS='bionic,focal'
@@ -144,7 +147,7 @@ function decode_commandline_options {
 
 function check_and_set_env_variables {
   v_package_name=$PPA_PAK_PACKAGE_NAME
-  v_package_version_with_debian=$PPA_PAK_VERSION
+  v_package_version_with_debian=$PPA_PAK_VERSION-${PPA_PAK_DEBIAN_VERSION:-$c_default_debian_version}
 
   if [[ -f "$PPA_PAK_COPYRIGHT" ]]; then
     v_dhmake_copyright_options=(--copyright custom --copyrightfile "$PPA_PAK_COPYRIGHT")
