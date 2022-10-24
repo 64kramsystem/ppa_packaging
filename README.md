@@ -22,6 +22,12 @@ export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
 prepare_ppa_package --cowbuild /path/to/ruby-2.7.1
 ```
 
+## Licenses
+
+Due to limitations of the `dh_make` tool, only a few preset licenses are available (see script help), and multiple licenses are not possible; as of v2.202102 (Oct/2022), the MIT license is not included.
+
+In order to specify any other license(s), create a license file, and set it as `PPA_PAK_COPYRIGHT` value.
+
 ## Presets
 
 The [`presets`](presets/) directory includes preset scripts for some programs, e.g. `prepare_ruby_packages`:
