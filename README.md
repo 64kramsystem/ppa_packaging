@@ -4,6 +4,8 @@ Scripts for preparing PPA packages.
 
 Their purpose and working has been described in [an article](https://saveriomiroddi.github.io/Learn-to-prepare-PPA-packages-by-setting-up-a-Ruby-PPA/) in my blog.
 
+## Usage
+
 The core script is `prepare_ppa_package`:
 
 ```
@@ -63,7 +65,9 @@ Example (mandatory -> optional -> command):
     prepare_ppa_package ~/build/ruby-2.7.1
 ```
 
-`prepare_ruby_packages` is a wrapper that prepares Ruby packages:
+## Presets
+
+The [`presets`](presets/) directory includes preset scripts for some programs, e.g. `prepare_ruby_packages`:
 
 ```
 $ prepare_ruby_packages --help
