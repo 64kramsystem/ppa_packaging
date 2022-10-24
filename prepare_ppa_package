@@ -8,8 +8,6 @@ set -o nounset
 # Constants
 ################################################################################
 
-c_supported_distros=(focal bionic)
-
 # dh_make has a limited whitelist, even if there are considerably more options available; see
 # https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/#license-short-name.
 #
@@ -29,6 +27,7 @@ c_package_ppa_version=1
 c_pbuilder_distros_base_path="/var/cache/pbuilder/distros"
 c_pbuilder_output_dir="/var/cache/pbuilder/result"
 
+c_supported_distros=("${!c_debhelper_distro_versions[@]}")
 c_help="Usage: $(basename "$0") [options] <project_directory>
 
 Requires the following packages to be installed: $(IFS=,; echo "${c_required_packages[*]}").
