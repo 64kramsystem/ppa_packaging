@@ -343,5 +343,7 @@ check_and_set_env_variables
 check_required_packages
 switch_directory
 create_debian_metadata
-[[ $v_cowbuild == "1" ]] && hold_sudo_permissions
+if [[ $v_cowbuild == "1" ]]; then
+  hold_sudo_permissions
+fi
 build_and_upload_package
