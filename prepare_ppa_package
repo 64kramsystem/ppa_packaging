@@ -48,7 +48,7 @@ Parameters:
 Environment-variable parameters (mandatory):
 
 - \$PPA_PAK_PACKAGE_NAME
-- \$PPA_PAK_VERSION           : Software version, not including the Debian version
+- \$PPA_PAK_VERSION           : Software version, not including the Debian version; exact match or regex (see below)
 - \$PPA_PAK_COPYRIGHT         : Filename of the copyright file, or (supported) copyright name (see below)
 - \$PPA_PAK_PPA_ADDRESS
 - \$PPA_PAK_EMAIL
@@ -68,10 +68,28 @@ Environment-variable parameters (optional):
 The supported standard copyrights are: $c_supported_copyrights.
 The supported distributions are: $(IFS=,; echo "${c_supported_distros[*]}").
 
+## Repository tag mode #########################################################
+
+The \$PPA_PAK_VERSION variable can also be in (Bash) regex format, which enables the \"repository tag\" mode.
+
+The format is '/regex/'; a capturing group for each version component *must* be present; the regex must match the *whole* string (the '^'/'$' metachars are automatically added).
+
+In this mode, the following workflow is executed:
+
+- the list of tags is filtered by the regex provided
+- the tags are sorted via 'sort -V' (the whole tag is used, not the captured group)
+- the highest-value tag is checked out
+- the whole script is executed
+- the repository is returned to the former HEAD commit
+
+Don't forget that the regex is in Bash format, which doesn't support all the PCRE functionalities!
+
+## Example #####################################################################
+
 # Mandatory
 
-export PPA_PAK_PACKAGE_NAME='ruby2.5'
-export PPA_PAK_VERSION='2.5.8'
+export PPA_PAK_PACKAGE_NAME='ruby3.1'
+export PPA_PAK_VERSION='/v(3)_(1)_([0-9]+)/'
 export PPA_PAK_COPYRIGHT=~/build/ruby/BSDL
 export PPA_PAK_PPA_ADDRESS='ppa:myuser/ruby-test'
 export PPA_PAK_EMAIL='myuser@gmail.com'
@@ -102,6 +120,7 @@ v_no_upload= # `1`: true; anything else: false
 v_no_test=   # `1`: true; anything else: false
 v_project_directory=
 
+export v_latest_tag=
 export v_package_name=
 export v_package_version_with_debian=
 v_dhmake_copyright_options=()
@@ -154,8 +173,27 @@ function decode_commandline_options {
 }
 
 function check_and_set_env_variables {
+  local v_package_version
+
+  if [[ $PPA_PAK_VERSION =~ /(.+)/ ]]; then
+    local tag_regex=^${BASH_REMATCH[1]}$
+
+    v_latest_tag=$(find_latest_tag "$tag_regex")
+
+    # Apply the regex, in order to extract the captured group. This will always succeed, since the
+    # tags are filtered using the same regex.
+    #
+    [[ $v_latest_tag =~ $tag_regex ]]
+
+    # Exclude the first entry (whole match).
+    #
+    v_package_version=$(IFS=.; echo "${BASH_REMATCH[*]:1}")
+  else
+    v_package_version=$PPA_PAK_VERSION
+  fi
+
   v_package_name=$PPA_PAK_PACKAGE_NAME
-  v_package_version_with_debian=$PPA_PAK_VERSION-${PPA_PAK_DEBIAN_VERSION:-$c_default_debian_version}
+  v_package_version_with_debian=$v_package_version-${PPA_PAK_DEBIAN_VERSION:-$c_default_debian_version}
 
   if [[ -f "$PPA_PAK_COPYRIGHT" ]]; then
     v_dhmake_copyright_options=(--copyright custom --copyrightfile "$PPA_PAK_COPYRIGHT")
@@ -345,6 +383,38 @@ function build_and_upload_package {
 }
 
 ################################################################################
+# HELPERS
+################################################################################
+
+function find_latest_tag {
+  local tag_regex=$1
+
+  local latest_tag
+  latest_tag=$(
+    git -C "$v_project_directory" tag |
+    grep -P "$tag_regex" |
+    sort -V |
+    tail -n 1
+  )
+
+  if [[ -z $latest_tag ]]; then
+    >&2 echo "No tags found matching the provided "
+    exit 1
+  else
+    echo -n "$latest_tag"
+  fi
+}
+
+function checkout_tag {
+  git -C "$v_project_directory" checkout "$v_latest_tag"
+}
+
+function register_checkout_previous_commit_hook {
+  function _checkout_previous_commit_hook { git -C "$v_project_directory" checkout -; }
+  trap _checkout_previous_commit_hook EXIT
+}
+
+################################################################################
 # EXECUTION
 ################################################################################
 
@@ -353,6 +423,10 @@ check_and_set_env_variables
 check_required_packages
 switch_directory
 create_debian_metadata
+if [[ -n $v_latest_tag ]]; then
+  checkout_tag
+  register_checkout_previous_commit_hook
+fi
 if [[ $v_cowbuild == "1" ]]; then
   hold_sudo_permissions
 fi
