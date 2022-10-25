@@ -18,6 +18,8 @@ shopt -s inherit_errexit
 # - https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/#license-field
 #
 c_supported_copyrights=$(dh_make --help | perl -ne 'print $1 if /copyright file \((.*)\)/')
+# See comments on `debuild` command invocation.
+c_project_ignore_patterns=(*.git)
 c_default_section=utils
 export c_changelog_description="Upstream version"
 
@@ -307,6 +309,11 @@ function build_and_upload_package {
     #
     perl -i -pe "s/debhelper-compat \K\(.+?\)/(= ${c_debhelper_distro_versions[$distribution]})/" debian/control
 
+    local ignore_pattern_options=()
+    for pattern in "${c_project_ignore_patterns[@]}"; do
+      ignore_pattern_options+=(--tar-ignore="$pattern")
+    done
+
     # Options order matters!
     #
     # `--no-tgz-check`:  don't search for the original when a debian version is present
@@ -316,12 +323,13 @@ function build_and_upload_package {
     # `-S`:              build a source package; `--build=source` is equivalent, but oddly, doesn't find
     #                    the changes file during build
     # `-Zgzip`:          fast compression; for testing purposes.
-    # `--tar-ignore=//`: the invoke `dpkg-source` filters out some files, including `.gitignore`, which
-    #                    are needed (!!) by some bundled gems this sets a phony pattern.
+    # `--tar-ignore=..`: necessary, otherwise the invoke `dpkg-source` filters out some files, including
+    #                    `.gitignore`, which is needed by some bundled gems (!). if one doesn't want to
+    #                    skip anything, set `//` as pattern.
     #
     # Creates `debian/files`, which can be ignored.
     #
-    debuild --no-tgz-check --no-lintian -d -S -Zgzip --tar-ignore=//
+    debuild --no-tgz-check --no-lintian -d -S -Zgzip "${ignore_pattern_options[@]}"
 
     if [[ $v_cowbuild == "1" ]]; then
       sudo cowbuilder --build --basepath "$c_pbuilder_distros_base_path/$distribution" --distribution "$distribution" "../${package_name_with_version_with_ppa}.dsc"
