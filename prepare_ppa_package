@@ -1,8 +1,10 @@
 #!/bin/bash
 
-set -o errexit
 set -o pipefail
+set -o errexit
 set -o nounset
+set -o errtrace
+shopt -s inherit_errexit
 
 ################################################################################
 # Constants
@@ -16,6 +18,8 @@ set -o nounset
 # - https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/#license-field
 #
 c_supported_copyrights=$(dh_make --help | perl -ne 'print $1 if /copyright file \((.*)\)/')
+# See comments on `debuild` command invocation.
+c_project_ignore_patterns=(*.git)
 c_default_section=utils
 export c_changelog_description="Upstream version"
 
@@ -44,7 +48,7 @@ Parameters:
 Environment-variable parameters (mandatory):
 
 - \$PPA_PAK_PACKAGE_NAME
-- \$PPA_PAK_VERSION           : Software version, not including the Debian version
+- \$PPA_PAK_VERSION           : Software version, not including the Debian version; exact match or regex (see below)
 - \$PPA_PAK_COPYRIGHT         : Filename of the copyright file, or (supported) copyright name (see below)
 - \$PPA_PAK_PPA_ADDRESS
 - \$PPA_PAK_EMAIL
@@ -56,6 +60,7 @@ Environment-variable parameters (optional):
 - \$PPA_PAK_DEBIAN_VERSION    : Debian version; defaults to '$c_default_debian_version'
 - \$PPA_PAK_BUILD_DEPS        : Comma-separed list of build dependencies
 - \$PPA_PAK_DEPS              : Comma-separed list of dependencies
+- \$PPA_PAK_AUTOCONFIGURE     : Override the autoconf task (see below)
 - \$PPA_PAK_DISTROS:          : Comma-separed list of distros to build; defaults to all the supported ones (see below)
 - \$PPA_PAK_LONG_DESCRIPTION  : Long package description; defaults to the value of \$PPA_PAK_DESCRIPTION
 - \$PPA_PAK_SECTION           : Package section; defaults to \`$c_default_section\`
@@ -64,10 +69,36 @@ Environment-variable parameters (optional):
 The supported standard copyrights are: $c_supported_copyrights.
 The supported distributions are: $(IFS=,; echo "${c_supported_distros[*]}").
 
+## Overriding the autoconfigure task ###########################################
+
+If the autoconfigure doesn't work for any reason, it can be manually specified. Pass the task commands, prefixed by tabs and separated by a newline, for example:
+
+export PPA_PAK_AUTOCONFIGURE=\$'\t./autogen.sh\n\t./configure --prefix=/usr'
+
+If the project sets the prefix to '/usr/local', one must override it (typically to '/usr'), since the former is illegal, and will break the build
+
+## Repository tag mode #########################################################
+
+The \$PPA_PAK_VERSION variable can also be in (Bash) regex format, which enables the \"repository tag\" mode.
+
+The format is '/regex/'; a capturing group for each version component *must* be present; the regex must match the *whole* string (the '^'/'$' metachars are automatically added).
+
+In this mode, the following workflow is executed:
+
+- the list of tags is filtered by the regex provided
+- the tags are sorted via 'sort -V' (the whole tag is used, not the captured group)
+- the highest-value tag is checked out
+- the whole script is executed
+- the repository is returned to the former HEAD commit
+
+Don't forget that the regex is in Bash format, which doesn't support all the PCRE functionalities!
+
+## Example #####################################################################
+
 # Mandatory
 
-export PPA_PAK_PACKAGE_NAME='ruby2.5'
-export PPA_PAK_VERSION='2.5.8'
+export PPA_PAK_PACKAGE_NAME='ruby3.1'
+export PPA_PAK_VERSION='/v(3)_(1)_([0-9]+)/'
 export PPA_PAK_COPYRIGHT=~/build/ruby/BSDL
 export PPA_PAK_PPA_ADDRESS='ppa:myuser/ruby-test'
 export PPA_PAK_EMAIL='myuser@gmail.com'
@@ -98,6 +129,7 @@ v_no_upload= # `1`: true; anything else: false
 v_no_test=   # `1`: true; anything else: false
 v_project_directory=
 
+export v_latest_tag=
 export v_package_name=
 export v_package_version_with_debian=
 v_dhmake_copyright_options=()
@@ -105,6 +137,7 @@ export v_ppa_address=
 export v_author_email=
 export v_description=
 export v_homepage=
+export v_autoconf_override=
 
 export v_build_depends=()
 export v_depends=()
@@ -150,8 +183,27 @@ function decode_commandline_options {
 }
 
 function check_and_set_env_variables {
+  local v_package_version
+
+  if [[ $PPA_PAK_VERSION =~ /(.+)/ ]]; then
+    local tag_regex=^${BASH_REMATCH[1]}$
+
+    v_latest_tag=$(find_latest_tag "$tag_regex")
+
+    # Apply the regex, in order to extract the captured group. This will always succeed, since the
+    # tags are filtered using the same regex.
+    #
+    [[ $v_latest_tag =~ $tag_regex ]]
+
+    # Exclude the first entry (whole match).
+    #
+    v_package_version=$(IFS=.; echo "${BASH_REMATCH[*]:1}")
+  else
+    v_package_version=$PPA_PAK_VERSION
+  fi
+
   v_package_name=$PPA_PAK_PACKAGE_NAME
-  v_package_version_with_debian=$PPA_PAK_VERSION-${PPA_PAK_DEBIAN_VERSION:-$c_default_debian_version}
+  v_package_version_with_debian=$v_package_version-${PPA_PAK_DEBIAN_VERSION:-$c_default_debian_version}
 
   if [[ -f "$PPA_PAK_COPYRIGHT" ]]; then
     v_dhmake_copyright_options=(--copyright custom --copyrightfile "$PPA_PAK_COPYRIGHT")
@@ -163,6 +215,7 @@ function check_and_set_env_variables {
   v_author_email=$PPA_PAK_EMAIL
   v_description=$PPA_PAK_DESCRIPTION
   v_homepage=$PPA_PAK_HOMEPAGE
+  v_autoconf_override=${PPA_PAK_AUTOCONFIGURE:-}
 
   if [[ ${PPA_PAK_BUILD_DEPS:-} == *' '* ]]; then
     >&2 echo "The variable \$PPA_PAK_BUILD_DEPS can't contain spaces; use comma to separate the packages."
@@ -258,7 +311,7 @@ function create_debian_metadata {
   #
   printf $'override_dh_dwz:\n\techo Skipping dh_dwz target\n\n' >> debian/rules
 
-  # Build using the default builder configuration, which is:
+  # By default, build using the default builder configuration, which is:
   #
   #     ./configure --build=x86_64-linux-gnu --prefix=/usr --includedir=\${prefix}/include --mandir=\${prefix}/share/man
   #       --infodir=\${prefix}/share/info --sysconfdir=/etc --localstatedir=/var --disable-silent-rules --libdir=\${prefix}/lib/x86_64-linux-gnu
@@ -267,7 +320,12 @@ function create_debian_metadata {
   # Otherwise, `dpkg-deb` (in the `dh_builddeb` target) complains that files are installed under
   # `/usr/local` (which breaks the debian standard).
   #
-  # printf $'override_dh_auto_configure:\n\t./configure --prefix=/usr/local\n\n' >> debian/rules
+  if [[ -n $v_autoconf_override ]]; then
+    echo -n "override_dh_auto_configure:
+$v_autoconf_override
+
+" >> debian/rules
+  fi
 
   # Another target with `/usr/local` problems. See: https://unix.stackexchange.com/a/386838.
   #
@@ -305,6 +363,11 @@ function build_and_upload_package {
     #
     perl -i -pe "s/debhelper-compat \K\(.+?\)/(= ${c_debhelper_distro_versions[$distribution]})/" debian/control
 
+    local ignore_pattern_options=()
+    for pattern in "${c_project_ignore_patterns[@]}"; do
+      ignore_pattern_options+=(--tar-ignore="$pattern")
+    done
+
     # Options order matters!
     #
     # `--no-tgz-check`:  don't search for the original when a debian version is present
@@ -314,12 +377,13 @@ function build_and_upload_package {
     # `-S`:              build a source package; `--build=source` is equivalent, but oddly, doesn't find
     #                    the changes file during build
     # `-Zgzip`:          fast compression; for testing purposes.
-    # `--tar-ignore=//`: the invoke `dpkg-source` filters out some files, including `.gitignore`, which
-    #                    are needed (!!) by some bundled gems this sets a phony pattern.
+    # `--tar-ignore=..`: necessary, otherwise the invoke `dpkg-source` filters out some files, including
+    #                    `.gitignore`, which is needed by some bundled gems (!). if one doesn't want to
+    #                    skip anything, set `//` as pattern.
     #
     # Creates `debian/files`, which can be ignored.
     #
-    debuild --no-tgz-check --no-lintian -d -S -Zgzip --tar-ignore=//
+    debuild --no-tgz-check --no-lintian -d -S -Zgzip "${ignore_pattern_options[@]}"
 
     if [[ $v_cowbuild == "1" ]]; then
       sudo cowbuilder --build --basepath "$c_pbuilder_distros_base_path/$distribution" --distribution "$distribution" "../${package_name_with_version_with_ppa}.dsc"
@@ -335,6 +399,38 @@ function build_and_upload_package {
 }
 
 ################################################################################
+# HELPERS
+################################################################################
+
+function find_latest_tag {
+  local tag_regex=$1
+
+  local latest_tag
+  latest_tag=$(
+    git -C "$v_project_directory" tag |
+    grep -P "$tag_regex" |
+    sort -V |
+    tail -n 1
+  )
+
+  if [[ -z $latest_tag ]]; then
+    >&2 echo "No tags found matching the provided "
+    exit 1
+  else
+    echo -n "$latest_tag"
+  fi
+}
+
+function checkout_tag {
+  git -C "$v_project_directory" checkout "$v_latest_tag"
+}
+
+function register_checkout_previous_commit_hook {
+  function _checkout_previous_commit_hook { git -C "$v_project_directory" checkout -; }
+  trap _checkout_previous_commit_hook EXIT
+}
+
+################################################################################
 # EXECUTION
 ################################################################################
 
@@ -343,6 +439,10 @@ check_and_set_env_variables
 check_required_packages
 switch_directory
 create_debian_metadata
+if [[ -n $v_latest_tag ]]; then
+  checkout_tag
+  register_checkout_previous_commit_hook
+fi
 if [[ $v_cowbuild == "1" ]]; then
   hold_sudo_permissions
 fi
