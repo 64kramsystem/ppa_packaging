@@ -187,7 +187,7 @@ function check_and_set_env_variables {
   while IFS= read -r description_line; do
     [[ -z $description_line ]] && description_line=.
     v_long_description+=" $description_line"$'\n'
-  done <<< ${PPA_PAK_LONG_DESCRIPTION:-$v_description}
+  done <<< "${PPA_PAK_LONG_DESCRIPTION:-$v_description}"
 }
 
 function check_required_packages {
