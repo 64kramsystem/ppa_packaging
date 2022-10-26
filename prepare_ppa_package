@@ -43,7 +43,7 @@ Parameters:
 
 -c|--cowbuild:              Build with cowbuilder before uploading
 -u|--no-upload:             Don't upload the package
--t|--no-test:               Don't execute the test target (overrides the \`dh_auto_test\` rule)
+-t|--no-test:               Don't execute the test command (overrides the 'dh_auto_test' rule)
 
 Environment-variable parameters (mandatory):
 
@@ -83,6 +83,8 @@ dh commands can be found as '/usr/bin/dh_*'; overridden commands can be invoked 
       # ...do some stuff...
       # the below argument will be passed to ./configure, and override the prefix.
       dh_auto_configure -- --prefix=/usr
+
+The related manpage can be found here: https://manpages.debian.org/unstable/debhelper/dh.1.en.html#OVERRIDE_AND_HOOK_TARGETS.
 
 ## Repository tag mode #########################################################
 
@@ -321,9 +323,9 @@ function create_debian_metadata {
   #
   perl -i -pe 's/.*(export DH_VERBOSE).*/$1=1/' debian/rules
 
-  # The `dh_dwz` target fails, because `dwz` finds nothing compressible, so we disable it.
+  # The `dh_dwz` command fails, because `dwz` finds nothing compressible, so we disable it.
   #
-  printf $'override_dh_dwz:\n\techo Skipping dh_dwz target\n\n' >> debian/rules
+  printf $'override_dh_dwz:\n\techo Skipping dh_dwz command\n\n' >> debian/rules
 
   # By default, build using the default builder configuration, which is:
   #
@@ -331,21 +333,17 @@ function create_debian_metadata {
   #       --infodir=\${prefix}/share/info --sysconfdir=/etc --localstatedir=/var --disable-silent-rules --libdir=\${prefix}/lib/x86_64-linux-gnu
   #       --runstatedir=/run --disable-maintainer-mode --disable-dependency-tracking`
   #
-  # Otherwise, `dpkg-deb` (in the `dh_builddeb` target) complains that files are installed under
-  # `/usr/local` (which breaks the debian standard).
+  # Otherwise, `dpkg-deb` (in the `dh_builddeb` command) complains that files are installed under
+  # `/usr/local` (which breaks the debian standard; see https://unix.stackexchange.com/a/386838).
   #
   if [[ -n $v_dh_overrides ]]; then
     echo "$v_dh_overrides" >> debian/rules
   fi
 
-  # Another target with `/usr/local` problems. See: https://unix.stackexchange.com/a/386838.
-  #
-  # printf $'override_dh_usrlocal:\n\techo Skipping dh_usrlocal target\n\n' >> debian/rules
-
   # Disable testing.
   #
   if [[ $v_no_test == "1" ]]; then
-    printf $'override_dh_auto_test:\n\techo Skipping dh_auto_test target\n\n' >> debian/rules
+    printf $'override_dh_auto_test:\n\techo Skipping dh_auto_test command\n\n' >> debian/rules
   fi
 }
 
