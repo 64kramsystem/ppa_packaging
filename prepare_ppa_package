@@ -414,7 +414,7 @@ function find_latest_tag {
     git -C "$v_project_directory" tag |
     grep -P "$tag_regex" |
     sort -V |
-    tail -n 1
+    tail -n 1 || true
   )
 
   if [[ -z $latest_tag ]]; then
