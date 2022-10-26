@@ -1,0 +1,28 @@
+#!/bin/bash
+
+set -o errexit
+
+# Example that prepares the latest Ruby 3.1 package, from the (extracted) tarball.
+#
+# Repository:        git@github.com:joncampbell123/dosbox-x.git
+# Build instruction: https://github.com/joncampbell123/dosbox-x/blob/master/BUILD.md#to-compile-dosbox-x-in-ubuntu-tested-with-2004-and-2010
+
+export PPA_PAK_PACKAGE_NAME='dosbox-x'
+export PPA_PAK_VERSION='/dosbox-x-v([0-9+]).([0-9]+).([0-9+])/'
+export PPA_PAK_COPYRIGHT='gpl2'
+export PPA_PAK_PPA_ADDRESS='ppa:myuser/myrepo'
+export PPA_PAK_EMAIL='myuser@gmail.com'
+export PPA_PAK_DESCRIPTION='DOSBox-X fork of the DOSBox project'
+export PPA_PAK_HOMEPAGE='https://dosbox-x.com/'
+export PPA_PAK_SECTION='universe/otherosfs'
+
+# The libav v5.8 packages are not avaialble on Bionic. Not sure if the project is compatible with v5.7,
+# but for simplicity, we take the build instructions literally and skip Bionic.
+# The dependency list may require some tweaking. For example, both `libavcodec-extra` and `libavcodec-extra58`
+# are specified, but the latter depends on the former; for this reason, the former has been removed.
+export PPA_PAK_DISTROS='focal,jammy'
+
+export PPA_PAK_BUILD_DEPS='automake,gcc,g++,make,libncurses-dev,nasm,libsdl-net1.2-dev,libsdl2-net-dev,libpcap-dev,libslirp-dev,fluidsynth,libfluidsynth-dev,libavdevice58,libavformat-dev,libavcodec-dev,libavcodec-extra58,libswscale-dev,libfreetype-dev,libxkbfile-dev,libxrandr-dev'
+export PPA_PAK_DH_OVERRIDES=$'override_dh_auto_configure:\n\t./build-debug-sdl2\noverride_dh_make:\n'
+
+"$(dirname "$0")"/../prepare_ppa_package -c /path/to/source_dir
