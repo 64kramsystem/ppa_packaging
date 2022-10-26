@@ -77,6 +77,13 @@ export PPA_PAK_DH_OVERRIDES=\$'execute_before_dh_auto_configure:\n\t./autogen.sh
 
 If the project sets the prefix to '/usr/local', one must override it (typically to '/usr'), since the former is illegal, and will break the build.
 
+dh commands can be found as '/usr/bin/dh_*'; overridden commands can be invoked directly, for example:
+
+    override_dh_auto_configure:
+      # ...do some stuff...
+      # the below argument will be passed to ./configure, and override the prefix.
+      dh_auto_configure -- --prefix=/usr
+
 ## Repository tag mode #########################################################
 
 The \$PPA_PAK_VERSION variable can also be in (Bash) regex format, which enables the \"repository tag\" mode.
