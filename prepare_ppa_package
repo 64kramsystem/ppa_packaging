@@ -60,7 +60,7 @@ Environment-variable parameters (optional):
 - \$PPA_PAK_DEBIAN_VERSION    : Debian version; defaults to '$c_default_debian_version'
 - \$PPA_PAK_BUILD_DEPS        : Comma-separed list of build dependencies
 - \$PPA_PAK_DEPS              : Comma-separed list of dependencies
-- \$PPA_PAK_DH_OVERRIDES      : Override dh commands
+- \$PPA_PAK_DH_OVERRIDES      : Override dh commands; if this is a filename, the content will be loaded from it
 - \$PPA_PAK_DISTROS:          : Comma-separed list of distros to build; defaults to all the supported ones (see below)
 - \$PPA_PAK_LONG_DESCRIPTION  : Long package description; defaults to the value of \$PPA_PAK_DESCRIPTION
 - \$PPA_PAK_SECTION           : Package section; defaults to \`$c_default_section\`
@@ -336,7 +336,9 @@ function create_debian_metadata {
   # Otherwise, `dpkg-deb` (in the `dh_builddeb` command) complains that files are installed under
   # `/usr/local` (which breaks the debian standard; see https://unix.stackexchange.com/a/386838).
   #
-  if [[ -n $v_dh_overrides ]]; then
+  if [[ -f $v_dh_overrides ]]; then
+    (cat "$v_dh_overrides"; echo) >> debian/rules
+  elif [[ -n $v_dh_overrides ]]; then
     echo "$v_dh_overrides" >> debian/rules
   fi
 
