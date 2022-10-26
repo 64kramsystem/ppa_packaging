@@ -1,26 +1,34 @@
 # PPA Packaging
 
-Scripts for preparing PPA packages.
+Script for preparing PPA packages. No need to handle all the messy Debian tools 😬
 
-Their purpose and working has been described in [an article](https://saveriomiroddi.github.io/Learn-to-prepare-PPA-packages-by-setting-up-a-Ruby-PPA/) in my blog.
+The purpose and working has been described in [an article](https://saveriomiroddi.github.io/Learn-to-prepare-PPA-packages-by-setting-up-a-Ruby-PPA/) in my blog.
 
 ## Usage
 
-The core script is `prepare_ppa_package`; run with the `--help` for a detailed help.
-
-Example usage:
+Set the related enviroment variables, and execute the script; example usage:
 
 ```sh
-export PPA_PAK_PACKAGE_NAME='ruby2.7'
-export PPA_PAK_VERSION='2.7.1'
-export PPA_PAK_COPYRIGHT=gpl2
-export PPA_PAK_PPA_ADDRESS='ppa:myuser/ruby-test'
+# Details of the env variables is provided by the script help (`prepare_ppa_package --help`)
+
+export PPA_PAK_PACKAGE_NAME='ruby3.1'
+export PPA_PAK_VERSION='3.1.2'
+export PPA_PAK_PPA_ADDRESS='ppa:myuser/myrepo'
+export PPA_PAK_DISTROS='focal,jammy'
 export PPA_PAK_EMAIL='myuser@gmail.com'
+export PPA_PAK_COPYRIGHT='gpl2'
 export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
 export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
+export PPA_PAK_SECTION='interpreters'
 
+export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates,curl,libc6-dev,libffi-dev,libgdbm-dev,libncurses5-dev,libsqlite3-dev,libtool,libyaml-dev,make,openssl,patch,pkg-config,sqlite3,zlib1g,zlib1g-dev,libreadline-dev,libssl-dev,libgmp-dev'
+
+# `--cowbuild` will perform a test build locally, before uploading to Launchpad.
+#
 prepare_ppa_package --cowbuild /path/to/ruby_source
 ```
+
+The above will prepare the deb source package and upload it to Launchpad, which will build the binary packages and make them available in the specified PPA 😁
 
 ## Licenses
 
@@ -30,16 +38,4 @@ In order to specify any other license(s), create a license file, and set it as `
 
 ## Presets
 
-The [`presets`](presets/) directory includes preset scripts for some programs, e.g. `prepare_ruby_packages`:
-
-```
-$ prepare_ruby_packages --help
-
-Usage: prepare_ruby_packages [-c|--cowbuild] [-u|--upload] [(-d|--distros) $distros] [-l|--latest] <ppa_address> <debian_version> <email>
-
-Downloads the latest stable Ruby versions, packages them, and uploads them.
-
-Requires `prepare_ppa_package` to be in the same directory as this file.
-
-Example: prepare_ruby_packages --cowbuild --upload --distros bionic ppa:saverio/ruby-test-4 sav1 saverio.notexists@gmail.com
-```
+See the [`presets`](presets) directory for some preset configurations.
