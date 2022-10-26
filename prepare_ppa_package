@@ -91,13 +91,15 @@ In this mode, the following workflow is executed:
 - the whole script is executed
 - the repository is returned to the former HEAD commit
 
+In this mode, the package name ('PPA_PAK_PACKAGE_NAME') can make use of the captured groups, by using printf placeholders (see example).
+
 Don't forget that the regex is in Bash format, which doesn't support all the PCRE functionalities!
 
 ## Example #####################################################################
 
 # Mandatory
 
-export PPA_PAK_PACKAGE_NAME='ruby3.1'
+export PPA_PAK_PACKAGE_NAME='ruby%i.%i'
 export PPA_PAK_VERSION='/v(3)_(1)_([0-9]+)/'
 export PPA_PAK_COPYRIGHT=~/build/ruby/BSDL
 export PPA_PAK_PPA_ADDRESS='ppa:myuser/ruby-test'
@@ -198,11 +200,16 @@ function check_and_set_env_variables {
     # Exclude the first entry (whole match).
     #
     v_package_version=$(IFS=.; echo "${BASH_REMATCH[*]:1}")
+
+    # This will ignore arguments, if there aren't (enough) placeholder, which allows ignoring patch
+    # versions, or using a fixed package name.
+    #
+    v_package_name=$(perl -e "printf '$PPA_PAK_PACKAGE_NAME', @ARGV" "${BASH_REMATCH[@]:1}")
   else
     v_package_version=$PPA_PAK_VERSION
+    v_package_name=$PPA_PAK_PACKAGE_NAME
   fi
 
-  v_package_name=$PPA_PAK_PACKAGE_NAME
   v_package_version_with_debian=$v_package_version-${PPA_PAK_DEBIAN_VERSION:-$c_default_debian_version}
 
   if [[ -f "$PPA_PAK_COPYRIGHT" ]]; then
