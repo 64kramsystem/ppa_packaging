@@ -13,11 +13,11 @@ set -o errexit
 # the config.* files.
 #
 # export PPA_PAK_BUILD_DEPS='autotools-dev,ruby,autoconf,automake,bison,ca-certificates,curl,libc6-dev,libffi-dev,libgdbm-dev,libncurses5-dev,libsqlite3-dev,libtool,libyaml-dev,make,openssl,patch,pkg-config,sqlite3,zlib1g,zlib1g-dev,libreadline-dev,libssl-dev,libgmp-dev'
-# export PPA_PAK_AUTOCONFIGURE=$'\t./autogen.sh\n\tcp /usr/share/misc/config.* tool/\n\t./configure --prefix=/usr'
+# export PPA_PAK_DH_OVERRIDES=$'execute_before_dh_auto_configure:\n\t./autogen.sh\n\tcp /usr/share/misc/config.* tool/'
 
 export PPA_PAK_PACKAGE_NAME='ruby3.1'
-export PPA_PAK_VERSION=3.1.2
-export PPA_PAK_COPYRIGHT=gpl2
+export PPA_PAK_VERSION='3.1.2'
+export PPA_PAK_COPYRIGHT='gpl2'
 export PPA_PAK_PPA_ADDRESS='ppa:myuser/myrepo'
 export PPA_PAK_EMAIL='myuser@gmail.com'
 export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'

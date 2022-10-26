@@ -60,7 +60,7 @@ Environment-variable parameters (optional):
 - \$PPA_PAK_DEBIAN_VERSION    : Debian version; defaults to '$c_default_debian_version'
 - \$PPA_PAK_BUILD_DEPS        : Comma-separed list of build dependencies
 - \$PPA_PAK_DEPS              : Comma-separed list of dependencies
-- \$PPA_PAK_AUTOCONFIGURE     : Override the autoconf task (see below)
+- \$PPA_PAK_DH_OVERRIDES      : Override dh commands
 - \$PPA_PAK_DISTROS:          : Comma-separed list of distros to build; defaults to all the supported ones (see below)
 - \$PPA_PAK_LONG_DESCRIPTION  : Long package description; defaults to the value of \$PPA_PAK_DESCRIPTION
 - \$PPA_PAK_SECTION           : Package section; defaults to \`$c_default_section\`
@@ -69,13 +69,13 @@ Environment-variable parameters (optional):
 The supported standard copyrights are: $c_supported_copyrights.
 The supported distributions are: $(IFS=,; echo "${c_supported_distros[*]}").
 
-## Overriding the autoconfigure task ###########################################
+## Overriding dh commands ######################################################
 
-If the autoconfigure doesn't work for any reason, it can be manually specified. Pass the task commands, prefixed by tabs and separated by a newline, for example:
+It's possible to override dh commands and/or add command hooks, by passing the string exactly as it needs to be added to the debian rules file; for example:
 
-export PPA_PAK_AUTOCONFIGURE=\$'\t./autogen.sh\n\t./configure --prefix=/usr'
+export PPA_PAK_DH_OVERRIDES=\$'execute_before_dh_auto_configure:\n\t./autogen.sh\n\tcp /usr/share/misc/config.* tool/'
 
-If the project sets the prefix to '/usr/local', one must override it (typically to '/usr'), since the former is illegal, and will break the build
+If the project sets the prefix to '/usr/local', one must override it (typically to '/usr'), since the former is illegal, and will break the build.
 
 ## Repository tag mode #########################################################
 
@@ -139,7 +139,7 @@ export v_ppa_address=
 export v_author_email=
 export v_description=
 export v_homepage=
-export v_autoconf_override=
+export v_dh_overrides=
 
 export v_build_depends=()
 export v_depends=()
@@ -222,7 +222,7 @@ function check_and_set_env_variables {
   v_author_email=$PPA_PAK_EMAIL
   v_description=$PPA_PAK_DESCRIPTION
   v_homepage=$PPA_PAK_HOMEPAGE
-  v_autoconf_override=${PPA_PAK_AUTOCONFIGURE:-}
+  v_dh_overrides=${PPA_PAK_DH_OVERRIDES:-}
 
   if [[ ${PPA_PAK_BUILD_DEPS:-} == *' '* ]]; then
     >&2 echo "The variable \$PPA_PAK_BUILD_DEPS can't contain spaces; use comma to separate the packages."
@@ -327,11 +327,8 @@ function create_debian_metadata {
   # Otherwise, `dpkg-deb` (in the `dh_builddeb` target) complains that files are installed under
   # `/usr/local` (which breaks the debian standard).
   #
-  if [[ -n $v_autoconf_override ]]; then
-    echo -n "override_dh_auto_configure:
-$v_autoconf_override
-
-" >> debian/rules
+  if [[ -n $v_dh_overrides ]]; then
+    echo "$v_dh_overrides" >> debian/rules
   fi
 
   # Another target with `/usr/local` problems. See: https://unix.stackexchange.com/a/386838.
