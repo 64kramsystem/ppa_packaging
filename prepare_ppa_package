@@ -50,7 +50,7 @@ Environment-variable parameters (mandatory):
 - \$PPA_PAK_PACKAGE_NAME
 - \$PPA_PAK_VERSION           : Software version, not including the Debian version; exact match or regex (see below)
 - \$PPA_PAK_COPYRIGHT         : Filename of the copyright file, or (supported) copyright name (see below)
-- \$PPA_PAK_PPA_ADDRESS
+- \$PPA_PAK_LAUNCHPAD_ID
 - \$PPA_PAK_EMAIL
 - \$PPA_PAK_DESCRIPTION
 - \$PPA_PAK_HOMEPAGE
@@ -62,6 +62,7 @@ Environment-variable parameters (optional):
 - \$PPA_PAK_DEPS              : Comma-separed list of dependencies
 - \$PPA_PAK_DH_OVERRIDES      : Override dh commands; if this is a filename, the content will be loaded from it
 - \$PPA_PAK_DISTROS:          : Comma-separed list of distros to build; defaults to all the supported ones (see below)
+- \$PPA_PAK_PPA_NAME          : The bare name of the PPA; defaults to the directory basename of the source code
 - \$PPA_PAK_LONG_DESCRIPTION  : Long package description; defaults to the value of \$PPA_PAK_DESCRIPTION
 - \$PPA_PAK_SECTION           : Package section; defaults to \`$c_default_section\`
 - \$PPA_PAK_VCS_GIT           : Source project git address
@@ -111,7 +112,7 @@ Don't forget that the regex is in Bash format, which doesn't support all the PCR
 export PPA_PAK_PACKAGE_NAME='ruby%i.%i'
 export PPA_PAK_VERSION='/v(3)_(1)_([0-9]+)/'
 export PPA_PAK_COPYRIGHT=~/build/ruby/BSDL
-export PPA_PAK_PPA_ADDRESS='ppa:myuser/ruby-test'
+export PPA_PAK_LAUNCHPAD_ID='myuser'
 export PPA_PAK_EMAIL='myuser@gmail.com'
 export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
 export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
@@ -227,7 +228,7 @@ function check_and_set_env_variables {
     v_dhmake_copyright_options=(--copyright "$PPA_PAK_COPYRIGHT")
   fi
 
-  v_ppa_address=$PPA_PAK_PPA_ADDRESS
+  v_ppa_address=ppa:$PPA_PAK_LAUNCHPAD_ID/${PPA_PAK_PPA_NAME:-$(basename "$v_project_directory")}
   v_author_email=$PPA_PAK_EMAIL
   v_description=$PPA_PAK_DESCRIPTION
   v_homepage=$PPA_PAK_HOMEPAGE
