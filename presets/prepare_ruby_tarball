@@ -2,17 +2,22 @@
 
 set -o errexit
 
-# Example that prepares the latest Ruby 3.1 package, from the (extracted) tarball.
+if [[ $# -ne 1 || $1 == '-h' || $1 == '--help' ]]; then
+  echo "Usage: $(basename "$0") </path/to/sourcedir>"
+  echo
+  echo 'Prepares the Ruby 3.1.2 package, from the (extracted) tarball.'
+  echo 'Requires PPA_PAK_LAUNCHPAD_ID and PPA_PAK_EMAIL.'
+  exit 0
+fi
 
 export PPA_PAK_PACKAGE_NAME='ruby3.1'
 export PPA_PAK_VERSION='3.1.2'
 export PPA_PAK_COPYRIGHT='gpl2'
-export PPA_PAK_LAUNCHPAD_ID='myuser'
-export PPA_PAK_EMAIL='myuser@gmail.com'
 export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
 export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
 export PPA_PAK_DISTROS='jammy'
+export PPA_PAK_SECTION='interpreters'
 
 export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates,curl,libc6-dev,libffi-dev,libgdbm-dev,libncurses5-dev,libsqlite3-dev,libtool,libyaml-dev,make,openssl,patch,pkg-config,sqlite3,zlib1g,zlib1g-dev,libreadline-dev,libssl-dev,libgmp-dev'
 
-"$(dirname "$0")"/../prepare_ppa_package -c /path/to/source_dir
+"$(dirname "$0")"/../prepare_ppa_package -c "$1"
