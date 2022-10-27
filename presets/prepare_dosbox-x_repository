@@ -10,7 +10,7 @@ set -o errexit
 export PPA_PAK_PACKAGE_NAME='dosbox-x'
 export PPA_PAK_VERSION='/dosbox-x-v([0-9+]).([0-9]+).([0-9+])/'
 export PPA_PAK_COPYRIGHT='gpl2'
-export PPA_PAK_PPA_ADDRESS='ppa:myuser/myrepo'
+export PPA_PAK_LAUNCHPAD_ID='myuser'
 export PPA_PAK_EMAIL='myuser@gmail.com'
 export PPA_PAK_DESCRIPTION='DOSBox-X fork of the DOSBox project'
 export PPA_PAK_HOMEPAGE='https://dosbox-x.com/'
