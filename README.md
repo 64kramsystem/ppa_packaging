@@ -13,7 +13,7 @@ Set the related enviroment variables, and execute the script; example usage:
 
 export PPA_PAK_PACKAGE_NAME='ruby3.1'
 export PPA_PAK_VERSION='3.1.2'
-export PPA_PAK_PPA_ADDRESS='ppa:myuser/myrepo'
+export PPA_PAK_LAUNCHPAD_ID='myuser'
 export PPA_PAK_DISTROS='focal,jammy'
 export PPA_PAK_EMAIL='myuser@gmail.com'
 export PPA_PAK_COPYRIGHT='gpl2'
