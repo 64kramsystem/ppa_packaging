@@ -138,24 +138,27 @@ $(basename "$0") ~/build/ruby
 # Variables
 ################################################################################
 
-v_cowbuild=  # `1`: true; anything else: false
-v_no_upload= # `1`: true; anything else: false
-v_no_test=   # `1`: true; anything else: false
+# Direct user-provided variables.
+#
+v_cowbuild=          # blank:false, anything else: true
+v_upload=1           # blank:false, anything else: true
+v_run_test=1         # blank:false, anything else: true
 v_project_directory=
 
-export v_latest_tag=
-export v_package_name=
-export v_package_version_with_debian=
+# Intermediate variables.
+#
+v_latest_tag=
+v_package_name=
+v_package_version_with_debian=
 v_dhmake_copyright_options=()
-export v_ppa_address=
-export v_author_email=
+v_ppa_address=
+v_author_email=
 export v_description=
 export v_homepage=
-export v_dh_overrides=
-
+v_dh_overrides=
 export v_build_depends=()
 export v_depends=()
-export v_build_distros=()
+v_build_distros=()
 export v_long_description=
 export v_section=
 export v_vcs_browser=
@@ -177,10 +180,10 @@ function decode_commandline_options {
         v_cowbuild=1
         shift ;;
       -u|--no-upload)
-        v_no_upload=1
+        v_upload=
         shift ;;
       -t|--no-test)
-        v_no_test=1
+        v_run_test=
         shift ;;
       --)
         shift
@@ -283,7 +286,7 @@ function check_prerequisites {
   fi
 }
 
-function switch_directory {
+function switch_to_project_directory {
   cd "$v_project_directory"
 }
 
@@ -358,7 +361,7 @@ function create_debian_metadata {
 
   # Disable testing.
   #
-  if [[ $v_no_test == "1" ]]; then
+  if [[ -z $v_run_test ]]; then
     printf $'override_dh_auto_test:\n\techo Skipping dh_auto_test command\n\n' >> debian/rules
   fi
 }
@@ -373,54 +376,87 @@ function hold_sudo_permissions {
   done 2>/dev/null &
 }
 
-function build_and_upload_package {
-  for distribution in "${v_build_distros[@]}"; do
-    local package_version_with_ppa=${v_package_version_with_debian}~${distribution}${c_package_ppa_version}
-    local package_name_with_version_with_ppa="${v_package_name}_${package_version_with_ppa}"
+function configure_package_distro {
+  local distribution=$1
 
-    echo ">>> Building $package_name_with_version_with_ppa ($distribution)"
+  local package_version_with_ppa package_name_with_version_with_ppa
 
-    # See previous note about `dch` unfitness.
-    #
-    sed -i -E "1c$v_package_name ($package_version_with_ppa) ${distribution}; urgency=medium" debian/changelog
+  package_version_with_ppa=$(compose_package_version_with_ppa "$distribution")
+  package_name_with_version_with_ppa=$(compose_package_name_with_version_with_ppa "$distribution")
 
-    # debuild uses the `debhelper-compat (= ...)` dependency version to find the compatibility level.
-    #
-    perl -i -pe "s/debhelper-compat \K\(.+?\)/(= ${c_debhelper_distro_versions[$distribution]})/" debian/control
+  echo ">>> Building $package_name_with_version_with_ppa ($distribution)"
 
-    local ignore_pattern_options=()
-    for pattern in "${c_project_ignore_patterns[@]}"; do
-      ignore_pattern_options+=(--tar-ignore="$pattern")
-    done
+  # See previous note about `dch` unfitness.
+  #
+  sed -i -E "1c$v_package_name ($package_version_with_ppa) ${distribution}; urgency=medium" debian/changelog
 
-    # Options order matters!
-    #
-    # `--no-tgz-check`:  don't search for the original when a debian version is present
-    # `--no-lintian`:    save time; for testing purposes
-    # `-d`:              skip the dependency checks, due to `debhelper` on xenial (debuild assumes
-    #                    that the build happens on the same machine)
-    # `-S`:              build a source package; `--build=source` is equivalent, but oddly, doesn't find
-    #                    the changes file during build
-    # `-Zgzip`:          fast compression; for testing purposes.
-    # `--tar-ignore=..`: necessary, otherwise the invoke `dpkg-source` filters out some files, including
-    #                    `.gitignore`, which is needed by some bundled gems (!). if one doesn't want to
-    #                    skip anything, set `//` as pattern.
-    #
-    # Creates `debian/files`, which can be ignored.
-    #
-    debuild --no-tgz-check --no-lintian -d -S -Zgzip "${ignore_pattern_options[@]}"
+  # debuild uses the `debhelper-compat (= ...)` dependency version to find the compatibility level.
+  #
+  perl -i -pe "s/debhelper-compat \K\(.+?\)/(= ${c_debhelper_distro_versions[$distribution]})/" debian/control
+}
 
-    if [[ $v_cowbuild == "1" ]]; then
-      sudo cowbuilder --build --basepath "$c_pbuilder_distros_base_path/$distribution" --distribution "$distribution" "../${package_name_with_version_with_ppa}.dsc"
-      echo ">>> Built package: $c_pbuilder_output_dir/${package_name_with_version_with_ppa}_amd64.deb"
-    fi
-
-    if [[ $v_no_upload != "1" ]]; then
-      dput "$v_ppa_address" "../${package_name_with_version_with_ppa}_source.changes"
-    fi
-
-    echo "--------------------------------------------------------------------------------"
+function build_source_packages {
+  local ignore_pattern_options=()
+  for pattern in "${c_project_ignore_patterns[@]}"; do
+    ignore_pattern_options+=(--tar-ignore="$pattern")
   done
+
+  # Options order matters!
+  #
+  # `--no-tgz-check`:  don't search for the original when a debian version is present
+  # `--no-lintian`:    save time; for testing purposes
+  # `-d`:              skip the dependency checks, due to `debhelper` on xenial (debuild assumes
+  #                    that the build happens on the same machine)
+  # `-S`:              build a source package; `--build=source` is equivalent, but oddly, doesn't find
+  #                    the changes file during build
+  # `-Zgzip`:          fast compression; for testing purposes.
+  # `--tar-ignore=..`: necessary, otherwise the invoke `dpkg-source` filters out some files, including
+  #                    `.gitignore`, which is needed by some bundled gems (!). if one doesn't want to
+  #                    skip anything, set `//` as pattern.
+  #
+  # Creates `debian/files`, which can be ignored.
+  #
+  debuild --no-tgz-check --no-lintian -d -S -Zgzip "${ignore_pattern_options[@]}"
+}
+
+function perform_test_build {
+  local distribution=$1
+
+  local package_name_with_version_with_ppa
+  package_name_with_version_with_ppa=$(compose_package_name_with_version_with_ppa "$distribution")
+
+  sudo cowbuilder --build --basepath "$c_pbuilder_distros_base_path/$distribution" --distribution "$distribution" "../${package_name_with_version_with_ppa}.dsc"
+  echo ">>> Built package: $c_pbuilder_output_dir/${package_name_with_version_with_ppa}_amd64.deb"
+}
+
+function upload_source_packages {
+  local distribution=$1
+
+  local package_name_with_version_with_ppa
+  package_name_with_version_with_ppa=$(compose_package_name_with_version_with_ppa "$distribution")
+
+  dput "$v_ppa_address" "../${package_name_with_version_with_ppa}_source.changes"
+
+  echo "--------------------------------------------------------------------------------"
+}
+
+################################################################################
+# NAMING HELPERS
+#
+# Avoid repeating distro-dependent compositions.
+#
+################################################################################
+
+function compose_package_version_with_ppa {
+  local distribution=$1
+
+  echo -n "${v_package_version_with_debian}~${distribution}${c_package_ppa_version}"
+}
+
+function compose_package_name_with_version_with_ppa {
+  local distribution=$1
+
+  echo -n "${v_package_name}_$(compose_package_version_with_ppa "$distribution")"
 }
 
 ################################################################################
@@ -465,13 +501,22 @@ function register_cleanup_hooks {
 decode_commandline_options "$@"
 check_and_set_env_variables
 check_prerequisites
-switch_directory
+switch_to_project_directory
 create_debian_metadata
 if [[ -n $v_latest_tag ]]; then
   checkout_tag
   register_cleanup_hooks
 fi
-if [[ $v_cowbuild == "1" ]]; then
+if [[ -n $v_cowbuild ]]; then
   hold_sudo_permissions
 fi
-build_and_upload_package
+for distribution in "${v_build_distros[@]}"; do
+  configure_package_distro "$distribution"
+  build_source_packages
+  if [[ -n $v_cowbuild ]]; then
+    perform_test_build "$distribution"
+  fi
+  if [[ -n $v_upload ]]; then
+    upload_source_packages "$distribution"
+  fi
+done
