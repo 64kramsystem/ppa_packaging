@@ -133,6 +133,14 @@ export PPA_PAK_VCS_GIT='https://github.com/ruby/ruby.git'
 
 $(basename "$0") ~/build/ruby
 "
+c_package_file_suffixes=(
+  .dsc
+  _source.build
+  _source.buildinfo
+  _source.changes
+  _source.ppa.upload
+  .tar.gz
+)
 
 ################################################################################
 # Variables
@@ -490,6 +498,18 @@ function register_cleanup_hooks {
   function _cleanup_hook {
     rm -r "$v_project_directory"/debian
     git -C "$v_project_directory" checkout -
+    for distribution in "${v_build_distros[@]}"; do
+      local files_prefix
+      files_prefix=$(compose_package_name_with_version_with_ppa "$distribution")
+
+      # Could delete with glob, but better safe than sorry 😬.
+      #
+      for file_suffix in "${c_package_file_suffixes[@]}"; do
+        # Remove with `-f` because the `upload` file is only present when uploading.
+        #
+        rm -fv "$v_project_directory/../$files_prefix$file_suffix"
+      done
+    done
   }
   trap _cleanup_hook EXIT
 }
