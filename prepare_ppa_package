@@ -78,6 +78,8 @@ export PPA_PAK_DH_OVERRIDES=\$'execute_before_dh_auto_configure:\n\t./autogen.sh
 
 If the project sets the prefix to '/usr/local', one must override it (typically to '/usr'), since the former is illegal, and will break the build.
 
+The commands 'dh_dwz' and 'dh_clean' are always overridden; see explanation in the code.
+
 dh commands can be found as '/usr/bin/dh_*'; overridden commands can be invoked directly, for example:
 
     override_dh_auto_configure:
@@ -327,6 +329,10 @@ function create_debian_metadata {
   # The `dh_dwz` command fails, because `dwz` finds nothing compressible, so we disable it.
   #
   printf $'override_dh_dwz:\n\techo Skipping dh_dwz command\n\n' >> debian/rules
+
+  # Although this task is well-meaning (deletes files like backup copies etc.), we don't want to touch the project.
+  #
+  printf $'override_dh_clean:\n\techo Skipping dh_clean command\n\n' >> debian/rules
 
   # By default, build using the default builder configuration, which is:
   #
