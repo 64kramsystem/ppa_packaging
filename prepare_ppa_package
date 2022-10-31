@@ -138,24 +138,27 @@ $(basename "$0") ~/build/ruby
 # Variables
 ################################################################################
 
+# Direct user-provided variables.
+#
 v_cowbuild=          # blank:false, anything else: true
 v_upload=1           # blank:false, anything else: true
 v_run_test=1         # blank:false, anything else: true
 v_project_directory=
 
-export v_latest_tag=
-export v_package_name=
-export v_package_version_with_debian=
+# Intermediate variables.
+#
+v_latest_tag=
+v_package_name=
+v_package_version_with_debian=
 v_dhmake_copyright_options=()
-export v_ppa_address=
-export v_author_email=
+v_ppa_address=
+v_author_email=
 export v_description=
 export v_homepage=
-export v_dh_overrides=
-
+v_dh_overrides=
 export v_build_depends=()
 export v_depends=()
-export v_build_distros=()
+v_build_distros=()
 export v_long_description=
 export v_section=
 export v_vcs_browser=
