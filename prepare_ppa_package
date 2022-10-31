@@ -443,9 +443,12 @@ function checkout_tag {
   git -C "$v_project_directory" checkout "$v_latest_tag"
 }
 
-function register_checkout_previous_commit_hook {
-  function _checkout_previous_commit_hook { git -C "$v_project_directory" checkout -; }
-  trap _checkout_previous_commit_hook EXIT
+function register_cleanup_hooks {
+  function _cleanup_hook {
+    rm -r "$v_project_directory"/debian
+    git -C "$v_project_directory" checkout -
+  }
+  trap _cleanup_hook EXIT
 }
 
 ################################################################################
@@ -459,7 +462,7 @@ switch_directory
 create_debian_metadata
 if [[ -n $v_latest_tag ]]; then
   checkout_tag
-  register_checkout_previous_commit_hook
+  register_cleanup_hooks
 fi
 if [[ $v_cowbuild == "1" ]]; then
   hold_sudo_permissions
