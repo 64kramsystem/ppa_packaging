@@ -283,7 +283,7 @@ function check_prerequisites {
   fi
 }
 
-function switch_directory {
+function switch_to_project_directory {
   cd "$v_project_directory"
 }
 
@@ -465,7 +465,7 @@ function register_cleanup_hooks {
 decode_commandline_options "$@"
 check_and_set_env_variables
 check_prerequisites
-switch_directory
+switch_to_project_directory
 create_debian_metadata
 if [[ -n $v_latest_tag ]]; then
   checkout_tag
