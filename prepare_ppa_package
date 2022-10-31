@@ -138,9 +138,9 @@ $(basename "$0") ~/build/ruby
 # Variables
 ################################################################################
 
-v_cowbuild=  # `1`: true; anything else: false
-v_no_upload= # `1`: true; anything else: false
-v_no_test=   # `1`: true; anything else: false
+v_cowbuild=          # blank:false, anything else: true
+v_upload=1           # blank:false, anything else: true
+v_run_test=1         # blank:false, anything else: true
 v_project_directory=
 
 export v_latest_tag=
@@ -177,10 +177,10 @@ function decode_commandline_options {
         v_cowbuild=1
         shift ;;
       -u|--no-upload)
-        v_no_upload=1
+        v_upload=
         shift ;;
       -t|--no-test)
-        v_no_test=1
+        v_run_test=
         shift ;;
       --)
         shift
@@ -358,7 +358,7 @@ function create_debian_metadata {
 
   # Disable testing.
   #
-  if [[ $v_no_test == "1" ]]; then
+  if [[ -z $v_run_test ]]; then
     printf $'override_dh_auto_test:\n\techo Skipping dh_auto_test command\n\n' >> debian/rules
   fi
 }
@@ -410,12 +410,12 @@ function build_and_upload_package {
     #
     debuild --no-tgz-check --no-lintian -d -S -Zgzip "${ignore_pattern_options[@]}"
 
-    if [[ $v_cowbuild == "1" ]]; then
+    if [[ -n $v_cowbuild ]]; then
       sudo cowbuilder --build --basepath "$c_pbuilder_distros_base_path/$distribution" --distribution "$distribution" "../${package_name_with_version_with_ppa}.dsc"
       echo ">>> Built package: $c_pbuilder_output_dir/${package_name_with_version_with_ppa}_amd64.deb"
     fi
 
-    if [[ $v_no_upload != "1" ]]; then
+    if [[ -n $v_upload ]]; then
       dput "$v_ppa_address" "../${package_name_with_version_with_ppa}_source.changes"
     fi
 
@@ -471,7 +471,7 @@ if [[ -n $v_latest_tag ]]; then
   checkout_tag
   register_cleanup_hooks
 fi
-if [[ $v_cowbuild == "1" ]]; then
+if [[ -n $v_cowbuild ]]; then
   hold_sudo_permissions
 fi
 build_and_upload_package
