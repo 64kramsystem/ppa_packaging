@@ -375,8 +375,10 @@ function hold_sudo_permissions {
 
 function build_and_upload_package {
   for distribution in "${v_build_distros[@]}"; do
-    local package_version_with_ppa=${v_package_version_with_debian}~${distribution}${c_package_ppa_version}
-    local package_name_with_version_with_ppa="${v_package_name}_${package_version_with_ppa}"
+    local package_version_with_ppa package_name_with_version_with_ppa
+
+    package_version_with_ppa=$(compose_package_version_with_ppa "$distribution")
+    package_name_with_version_with_ppa=$(compose_package_name_with_version_with_ppa "$distribution")
 
     echo ">>> Building $package_name_with_version_with_ppa ($distribution)"
 
@@ -421,6 +423,25 @@ function build_and_upload_package {
 
     echo "--------------------------------------------------------------------------------"
   done
+}
+
+################################################################################
+# NAMING HELPERS
+#
+# Avoid repeating distro-dependent compositions.
+#
+################################################################################
+
+function compose_package_version_with_ppa {
+  local distribution=$1
+
+  echo -n "${v_package_version_with_debian}~${distribution}${c_package_ppa_version}"
+}
+
+function compose_package_name_with_version_with_ppa {
+  local distribution=$1
+
+  echo -n "${v_package_name}_$(compose_package_version_with_ppa "$distribution")"
 }
 
 ################################################################################
