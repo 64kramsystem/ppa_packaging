@@ -266,7 +266,7 @@ function check_and_set_env_variables {
   done <<< "${PPA_PAK_LONG_DESCRIPTION:-$v_description}"
 }
 
-function check_required_packages {
+function check_prerequisites {
   for executable in "${!c_required_packages[@]}"; do
     if [[ ! -x "$(command -v "$executable")" ]]; then
       local package=${c_required_packages[$executable]}
@@ -457,7 +457,7 @@ function register_cleanup_hooks {
 
 decode_commandline_options "$@"
 check_and_set_env_variables
-check_required_packages
+check_prerequisites
 switch_directory
 create_debian_metadata
 if [[ -n $v_latest_tag ]]; then
