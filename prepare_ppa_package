@@ -224,10 +224,20 @@ function check_and_set_env_variables {
     #
     v_package_version=$(IFS=.; echo "${BASH_REMATCH[*]:1}")
 
+    # See limitation below.
+    #
+    if [[ $PPA_PAK_PACKAGE_NAME == */* ]]; then
+      >&2 echo "The package name regex doesn't currently support slashes!"
+      exit 1
+    fi
+
     # This will ignore arguments, if there aren't (enough) placeholder, which allows ignoring patch
     # versions, or using a fixed package name.
     #
-    v_package_name=$(perl -pe 's/$ENV{tag_regex}/$ENV{PPA_PAK_PACKAGE_NAME/' <<< "$v_latest_tag")
+    # Perl doesn't interpret the matching variables when the string is an ENV variable, so we need
+    # to work this around.
+    #
+    v_package_name=$(perl -pe 's/$ENV{tag_regex}/'"${PPA_PAK_PACKAGE_NAME}"'/' <<< "$v_latest_tag")
   else
     v_package_version=$PPA_PAK_VERSION
     v_package_name=$PPA_PAK_PACKAGE_NAME
