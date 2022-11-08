@@ -111,7 +111,7 @@ Don't forget that the regex is in Bash format, which doesn't support all the PCR
 
 # Mandatory
 
-export PPA_PAK_PACKAGE_NAME='ruby%i.%i'
+export PPA_PAK_PACKAGE_NAME='ruby\$1.\$2'
 export PPA_PAK_VERSION='/v(3)_(1)_([0-9]+)/'
 export PPA_PAK_COPYRIGHT=~/build/ruby/BSDL
 export PPA_PAK_LAUNCHPAD_ID='myuser'
@@ -211,7 +211,7 @@ function check_and_set_env_variables {
   local v_package_version
 
   if [[ $PPA_PAK_VERSION =~ /(.+)/ ]]; then
-    local tag_regex=^${BASH_REMATCH[1]}$
+    declare -x tag_regex=^${BASH_REMATCH[1]}$
 
     v_latest_tag=$(find_latest_tag "$tag_regex")
 
@@ -224,10 +224,20 @@ function check_and_set_env_variables {
     #
     v_package_version=$(IFS=.; echo "${BASH_REMATCH[*]:1}")
 
+    # See limitation below.
+    #
+    if [[ $PPA_PAK_PACKAGE_NAME == */* ]]; then
+      >&2 echo "The package name regex doesn't currently support slashes!"
+      exit 1
+    fi
+
     # This will ignore arguments, if there aren't (enough) placeholder, which allows ignoring patch
     # versions, or using a fixed package name.
     #
-    v_package_name=$(perl -e "printf '$PPA_PAK_PACKAGE_NAME', @ARGV" "${BASH_REMATCH[@]:1}")
+    # Perl doesn't interpret the matching variables when the string is an ENV variable, so we need
+    # to work this around.
+    #
+    v_package_name=$(perl -pe 's/$ENV{tag_regex}/'"${PPA_PAK_PACKAGE_NAME}"'/' <<< "$v_latest_tag")
   else
     v_package_version=$PPA_PAK_VERSION
     v_package_name=$PPA_PAK_PACKAGE_NAME
