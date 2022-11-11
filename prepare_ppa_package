@@ -226,18 +226,18 @@ function check_and_set_env_variables {
 
     # See limitation below.
     #
-    if [[ $PPA_PAK_PACKAGE_NAME == */* ]]; then
-      >&2 echo "The package name regex doesn't currently support slashes!"
+    if [[ $PPA_PAK_PACKAGE_NAME == *\"* ]]; then
+      >&2 echo "The package name regex doesn't support double quotes!"
       exit 1
     fi
 
     # This will ignore arguments, if there aren't (enough) placeholder, which allows ignoring patch
     # versions, or using a fixed package name.
     #
-    # Perl doesn't interpret the matching variables when the string is an ENV variable, so we need
-    # to work this around.
+    # There may be no clean to replace with backreferences with standard Linux tools. This is an ok
+    # solution for trusted input.
     #
-    v_package_name=$(perl -pe 's/$ENV{tag_regex}/'"${PPA_PAK_PACKAGE_NAME}"'/' <<< "$v_latest_tag")
+    v_package_name=$(perl -pe 's/$ENV{tag_regex}/"\"".$ENV{PPA_PAK_PACKAGE_NAME}."\""/ee' <<< "$v_latest_tag")
   else
     v_package_version=$PPA_PAK_VERSION
     v_package_name=$PPA_PAK_PACKAGE_NAME
