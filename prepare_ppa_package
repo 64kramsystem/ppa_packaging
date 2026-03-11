@@ -431,14 +431,14 @@ function build_source_packages {
   # `-d`:              skip the dependency checks (debuild assumes that the build happens on the same machine)
   # `-S`:              build a source package; `--build=source` is equivalent, but oddly, doesn't find
   #                    the changes file during build
-  # `-Zgzip`:          fast compression; for testing purposes.
+  # `-Zxz`:            xz compression.
   # `--tar-ignore=..`: necessary, otherwise the invoke `dpkg-source` filters out some files, including
   #                    `.gitignore`, which is needed by some bundled gems (!). if one doesn't want to
   #                    skip anything, set `//` as pattern.
   #
   # Creates `debian/files`, which can be ignored.
   #
-  debuild --no-tgz-check --no-lintian -d -S -Zgzip "${ignore_pattern_options[@]}"
+  debuild --no-tgz-check --no-lintian -d -S -Zxz "${ignore_pattern_options[@]}"
 }
 
 function perform_test_build {
