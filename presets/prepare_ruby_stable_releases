@@ -9,7 +9,7 @@ shopt -s inherit_errexit
 # Downloads stable Ruby versions from the Ruby downloads page and packages them via prepare_ppa_package.
 #
 # Requires: PPA_PAK_LAUNCHPAD_ID, PPA_PAK_EMAIL.
-# Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION.
+# Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION, PPA_PAK_BUILD_DIR.
 #
 # Preview/Release candidate versions are skipped. While they can be downloaded and built regularly,
 # the version suffixes `-preview/-rc` cause the PPA to reject the release version, because according
@@ -32,13 +32,13 @@ c_help="Usage: $(basename "$0") [-u|--no-upload] [-s|--skip-existing] [-l|--late
 Downloads stable Ruby versions from the Ruby downloads page and packages them via prepare_ppa_package.
 
 Requires: PPA_PAK_LAUNCHPAD_ID, PPA_PAK_EMAIL.
-Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION.
+Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION, PPA_PAK_BUILD_DIR (defaults to '$c_default_sources_dir').
 "
 
 v_no_upload=
 v_skip_existing=
 v_only_latest=
-v_sources_dir="$c_default_sources_dir"
+v_sources_dir="${PPA_PAK_BUILD_DIR:-$c_default_sources_dir}"
 
 v_stable_links=()
 
