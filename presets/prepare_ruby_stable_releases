@@ -115,6 +115,9 @@ major/minor versions are not updated."
     export PPA_PAK_VERSION="$version"
     export PPA_PAK_COPYRIGHT="$source_dir/BSDL"
 
+    # prepare_ppa_package doesn't support pre-existing debian/ directories, so clean it up before each run.
+    rm -rf "$source_dir/debian"
+
     "$(dirname "$0")"/../prepare_ppa_package "${options[@]}" "$source_dir"
   done
 }
