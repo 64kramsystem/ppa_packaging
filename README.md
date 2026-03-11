@@ -17,7 +17,7 @@ export PPA_PAK_EMAIL='myuser@gmail.com'
 export PPA_PAK_COPYRIGHT='gpl2'
 export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
 export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
-export PPA_PAK_DISTROS='focal,jammy'
+export PPA_PAK_DISTROS='jammy'
 export PPA_PAK_SECTION='interpreters'
 export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates,curl,libc6-dev,libffi-dev,libgdbm-dev,libncurses5-dev,libsqlite3-dev,libtool,libyaml-dev,make,openssl,patch,pkg-config,sqlite3,zlib1g,zlib1g-dev,libreadline-dev,libssl-dev,libgmp-dev'
 
