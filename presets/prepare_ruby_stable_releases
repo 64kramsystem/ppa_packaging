@@ -1,0 +1,124 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+set -o errtrace
+shopt -s inherit_errexit
+
+# Downloads stable Ruby versions from the Ruby downloads page and packages them via prepare_ppa_package.
+#
+# Requires: PPA_PAK_LAUNCHPAD_ID, PPA_PAK_EMAIL.
+# Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION.
+#
+# Preview/Release candidate versions are skipped. While they can be downloaded and built regularly,
+# the version suffixes `-preview/-rc` cause the PPA to reject the release version, because according
+# to Debian version naming, it's preceding.
+#
+# This is a simplified version of the source page:
+#
+# <li><strong>Stable releases:</strong>
+#   <ul>
+#     <li><a href="https://cache.ruby-lang.org/pub/ruby/4.0/ruby-4.0.1.tar.gz">Ruby 4.0.1</a><br />
+#     ...
+#   </ul>
+# </li>
+# <li><strong>Not maintained anymore (EOL):</strong>
+
+c_ruby_downloads_url="https://www.ruby-lang.org/en/downloads"
+c_sources_dir="/var/lib/ruby_ppa_packaging"
+c_help="Usage: $(basename "$0") [-u|--no-upload] [-s|--skip-existing] [-l|--latest]
+
+Downloads stable Ruby versions from the Ruby downloads page and packages them via prepare_ppa_package.
+
+Requires: PPA_PAK_LAUNCHPAD_ID, PPA_PAK_EMAIL.
+Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION.
+"
+
+v_no_upload=
+v_skip_existing=
+v_only_latest=
+
+v_stable_links=()
+
+function decode_commandline_options {
+  eval set -- "$(getopt --options husl --long help,no-upload,skip-existing,latest -- "$@")"
+
+  while true; do
+    case "$1" in
+      -h|--help)
+        echo "$c_help"
+        exit 0 ;;
+      -u|--no-upload)
+        v_no_upload=1
+        shift ;;
+      -s|--skip-existing)
+        v_skip_existing=1
+        shift ;;
+      -l|--latest)
+        v_only_latest=1
+        shift ;;
+      --)
+        shift
+        break ;;
+    esac
+  done
+}
+
+function find_stable_version_links {
+  local count=255
+  [[ -n $v_only_latest ]] && count=1
+
+  mapfile -t v_stable_links < <(
+    wget -qO- "$c_ruby_downloads_url" |
+    grep -zoP '(?s)<\w+>Stable releases.*?<\w+>Not maintained' |
+    grep -aoP 'https://cache\.ruby-lang\.org.*?\.tar\.gz' |
+    grep -avP 'ruby-\d+\.\d+\.\d+-(rc|preview)\d+\.' |
+    sort -ru |
+    head -n "$count"
+  )
+}
+
+function prepare_packages {
+  export PPA_PAK_PPA_NAME=${PPA_PAK_PPA_NAME:-ruby-builds}
+
+  export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
+  export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
+  export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates,curl,libc6-dev,libffi-dev,libgdbm-dev,libncurses5-dev,libsqlite3-dev,libtool,libyaml-dev,make,openssl,patch,pkg-config,sqlite3,zlib1g,zlib1g-dev,libreadline-dev,libssl-dev,libgmp-dev'
+  export PPA_PAK_DEPS='libgmp-dev'
+  export PPA_PAK_LONG_DESCRIPTION="Ruby is the interpreted scripting language for quick and easy
+object-oriented programming.  It has many features to process text
+files and to do system management tasks (as in perl).  It is simple,
+straight-forward, and extensible.
+
+This package provides up-to-date patch versions of the Ruby branch;
+major/minor versions are not updated."
+  export PPA_PAK_SECTION='interpreters'
+  export PPA_PAK_VCS_GIT='https://github.com/ruby/ruby.git'
+
+  local options=()
+  [[ -n $v_no_upload ]] && options+=(--no-upload)
+  [[ -n $v_skip_existing ]] && options+=(--skip-existing)
+
+  for link in "${v_stable_links[@]}"; do
+    local version
+    version=$(grep -oP '\d+\.\d+\.\d+' <<< "$link")
+    local major_minor=${version%.*}
+    local source_dir="$c_sources_dir/ruby-$version"
+
+    if [[ ! -d "$source_dir" ]]; then
+      echo "Downloading $link..."
+      wget -qO- "$link" | tar xz -C "$c_sources_dir"
+    fi
+
+    export PPA_PAK_PACKAGE_NAME="ruby$major_minor"
+    export PPA_PAK_VERSION="$version"
+    export PPA_PAK_COPYRIGHT="$source_dir/BSDL"
+
+    "$(dirname "$0")"/../prepare_ppa_package "${options[@]}" "$source_dir"
+  done
+}
+
+decode_commandline_options "$@"
+find_stable_version_links
+prepare_packages
