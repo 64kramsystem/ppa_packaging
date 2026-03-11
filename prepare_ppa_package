@@ -44,6 +44,7 @@ Parameters:
 -c|--cowbuild:              Build with cowbuilder before uploading
 -u|--no-upload:             Don't upload the package
 -t|--no-test:               Don't execute the test command (overrides the 'dh_auto_test' rule)
+-s|--skip-existing:         Skip distros whose upload marker already exists
 
 Environment-variable parameters (mandatory):
 
@@ -151,6 +152,7 @@ c_package_file_suffixes=(
 v_cowbuild=          # blank:false, anything else: true
 v_upload=1           # blank:false, anything else: true
 v_run_test=1         # blank:false, anything else: true
+v_skip_existing=     # blank:false, anything else: true
 v_project_directory=
 
 # Intermediate variables.
@@ -177,7 +179,7 @@ export v_vcs_git=
 ################################################################################
 
 function decode_commandline_options {
-  eval set -- "$(getopt --options hcut --long help,cowbuild,no-upload,no-test -- "$@")"
+  eval set -- "$(getopt --options hcuts --long help,cowbuild,no-upload,no-test,skip-existing -- "$@")"
 
   while true ; do
     case "$1" in
@@ -192,6 +194,9 @@ function decode_commandline_options {
         shift ;;
       -t|--no-test)
         v_run_test=
+        shift ;;
+      -s|--skip-existing)
+        v_skip_existing=1
         shift ;;
       --)
         shift
@@ -540,6 +545,11 @@ if [[ -n $v_cowbuild ]]; then
   hold_sudo_permissions
 fi
 for distribution in "${v_build_distros[@]}"; do
+  upload_marker="$v_project_directory/../$(compose_package_name_with_version_with_ppa "$distribution")_source.ppa.upload"
+  if [[ -n $v_skip_existing ]] && [[ -f "$upload_marker" ]]; then
+    echo ">>> Skipping $distribution: upload marker already exists ($upload_marker)"
+    continue
+  fi
   configure_package_distro "$distribution"
   build_source_packages
   if [[ -n $v_cowbuild ]]; then
