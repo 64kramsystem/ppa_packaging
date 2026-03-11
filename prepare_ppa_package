@@ -336,11 +336,11 @@ function create_debian_metadata {
   perl -i -pe 's/Initial Release/$ENV{c_changelog_description}/' debian/changelog
 
   if [[ ${#v_build_depends[@]} -gt 0 ]]; then
-    build_depends=$(IFS=,; echo "${v_build_depends[*]}") perl -i -pe 's/^Build-Depends: .*\K/,$ENV{build_depends}/' debian/control
+    build_depends=$(IFS=,; echo "${v_build_depends[*]}") perl -i -0pe 's/(Build-Depends:[ \t]*[^\n]*(?:\n[ \t]+[^\n]*)*)/$1,$ENV{build_depends}/' debian/control
   fi
 
   if [[ ${#v_depends[@]} -gt 0 ]]; then
-    depends=$(IFS=,; echo "${v_depends[*]}") perl -i -pe 's/^Depends: .*\K/,$ENV{depends}/' debian/control
+    depends=$(IFS=,; echo "${v_depends[*]}") perl -i -0pe 's/(Depends:[ \t]*[^\n]*(?:\n[ \t]+[^\n]*)*)/$1,$ENV{depends}/' debian/control
   fi
 
   perl -i -pe 's/^Section: \K.*/$ENV{v_section}/'                        debian/control
