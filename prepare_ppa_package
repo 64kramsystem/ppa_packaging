@@ -492,7 +492,7 @@ function find_latest_tag {
   )
 
   if [[ -z $latest_tag ]]; then
-    >&2 echo "No tags found matching the provided "
+    >&2 echo "No tags found matching the provided regex: $tag_regex"
     exit 1
   else
     echo -n "$latest_tag"
