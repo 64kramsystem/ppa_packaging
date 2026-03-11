@@ -18,11 +18,9 @@ export PPA_PAK_VERSION='/dosbox-x-v([0-9+]).([0-9]+).([0-9+])/'
 export PPA_PAK_COPYRIGHT='gpl2'
 export PPA_PAK_DESCRIPTION='DOSBox-X fork of the DOSBox project'
 export PPA_PAK_HOMEPAGE='https://dosbox-x.com/'
-# The libav v5.8 packages are not avaialble on Bionic. Not sure if the project is compatible with v5.7,
-# but for simplicity, we take the build instructions literally and skip Bionic.
 # The dependency list may require some tweaking. For example, both `libavcodec-extra` and `libavcodec-extra58`
 # are specified, but the latter depends on the former; for this reason, the former has been removed.
-export PPA_PAK_DISTROS='focal,jammy'
+export PPA_PAK_DISTROS='jammy'
 export PPA_PAK_SECTION='universe/otherosfs'
 
 export PPA_PAK_BUILD_DEPS='automake,gcc,g++,make,libncurses-dev,nasm,libsdl-net1.2-dev,libsdl2-net-dev,libpcap-dev,libslirp-dev,fluidsynth,libfluidsynth-dev,libavdevice58,libavformat-dev,libavcodec-dev,libavcodec-extra58,libswscale-dev,libfreetype-dev,libxkbfile-dev,libxrandr-dev'
