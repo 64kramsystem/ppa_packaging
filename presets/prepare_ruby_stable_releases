@@ -26,8 +26,8 @@ shopt -s inherit_errexit
 # <li><strong>Not maintained anymore (EOL):</strong>
 
 c_ruby_downloads_url="https://www.ruby-lang.org/en/downloads"
-c_sources_dir="/var/lib/ruby_ppa_packaging"
-c_help="Usage: $(basename "$0") [-u|--no-upload] [-s|--skip-existing] [-l|--latest]
+c_default_sources_dir="/var/lib/ruby_ppa_packaging"
+c_help="Usage: $(basename "$0") [-u|--no-upload] [-s|--skip-existing] [-l|--latest] [-d|--build-dir <dir>]
 
 Downloads stable Ruby versions from the Ruby downloads page and packages them via prepare_ppa_package.
 
@@ -38,11 +38,12 @@ Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION.
 v_no_upload=
 v_skip_existing=
 v_only_latest=
+v_sources_dir="$c_default_sources_dir"
 
 v_stable_links=()
 
 function decode_commandline_options {
-  eval set -- "$(getopt --options husl --long help,no-upload,skip-existing,latest -- "$@")"
+  eval set -- "$(getopt --options husld: --long help,no-upload,skip-existing,latest,build-dir: -- "$@")"
 
   while true; do
     case "$1" in
@@ -58,6 +59,9 @@ function decode_commandline_options {
       -l|--latest)
         v_only_latest=1
         shift ;;
+      -d|--build-dir)
+        v_sources_dir="$2"
+        shift 2 ;;
       --)
         shift
         break ;;
@@ -104,11 +108,11 @@ major/minor versions are not updated."
     local version
     version=$(grep -oP '\d+\.\d+\.\d+' <<< "$link")
     local major_minor=${version%.*}
-    local source_dir="$c_sources_dir/ruby-$version"
+    local source_dir="$v_sources_dir/ruby-$version"
 
     if [[ ! -d "$source_dir" ]]; then
       echo "Downloading $link..."
-      wget -qO- "$link" | tar xz -C "$c_sources_dir"
+      wget -qO- "$link" | tar xz -C "$v_sources_dir"
     fi
 
     export PPA_PAK_PACKAGE_NAME="ruby$major_minor"
