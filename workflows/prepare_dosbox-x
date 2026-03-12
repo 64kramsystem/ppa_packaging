@@ -20,7 +20,7 @@ export PPA_PAK_DESCRIPTION='DOSBox-X fork of the DOSBox project'
 export PPA_PAK_HOMEPAGE='https://dosbox-x.com/'
 # The dependency list may require some tweaking. For example, both `libavcodec-extra` and `libavcodec-extra58`
 # are specified, but the latter depends on the former; for this reason, the former has been removed.
-export PPA_PAK_DISTROS='jammy noble questing'
+export PPA_PAK_DISTROS='jammy,noble,questing'
 export PPA_PAK_SECTION='universe/otherosfs'
 
 export PPA_PAK_BUILD_DEPS='automake,gcc,g++,make,libncurses-dev,nasm,libsdl-net1.2-dev,libsdl2-net-dev,libpcap-dev,libslirp-dev,fluidsynth,libfluidsynth-dev,libavdevice58,libavformat-dev,libavcodec-dev,libavcodec-extra58,libswscale-dev,libfreetype-dev,libxkbfile-dev,libxrandr-dev'
