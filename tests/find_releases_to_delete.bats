@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 setup() {
-  source "$(dirname "$BATS_TEST_FILENAME")/../workflows/clean_ruby_stable_releases"
+  source "$(dirname "$BATS_TEST_FILENAME")/../helpers/clean_ruby_stable_releases"
 
   export TMPDIR
   TMPDIR=$(mktemp -d)
