@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+# Prints stable Ruby tarball URLs from the Ruby downloads page.
+# Preview/RC versions are excluded (their version suffixes cause the PPA to reject
+# the release version, as Debian considers them preceding).
+#
+# Usage: find_stable_ruby_links [--latest]
+#   --latest  Print only the most recent stable version
+
+c_ruby_downloads_url="https://www.ruby-lang.org/en/downloads"
+
+count=255
+[[ "${1:-}" == "--latest" ]] && count=1
+
+wget -qO- "$c_ruby_downloads_url" |
+  grep -zoP '(?s)<\w+>Stable releases.*?<\w+>Not maintained' |
+  grep -aoP 'https://cache\.ruby-lang\.org.*?\.tar\.gz' |
+  grep -avP 'ruby-\d+\.\d+\.\d+-(rc|preview)\d+\.' |
+  sort -ru |
+  head -n "$count"

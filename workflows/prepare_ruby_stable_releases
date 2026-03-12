@@ -25,7 +25,6 @@ shopt -s inherit_errexit
 # </li>
 # <li><strong>Not maintained anymore (EOL):</strong>
 
-c_ruby_downloads_url="https://www.ruby-lang.org/en/downloads"
 c_default_sources_dir="/var/lib/ruby_ppa_packaging"
 c_help="Usage: $(basename "$0") [-u|--no-upload] [-l|--latest] [-d|--build-dir <dir>]
 
@@ -66,19 +65,6 @@ function decode_commandline_options {
   done
 }
 
-function find_stable_version_links {
-  local count=255
-  [[ -n $v_only_latest ]] && count=1
-
-  mapfile -t v_stable_links < <(
-    wget -qO- "$c_ruby_downloads_url" |
-    grep -zoP '(?s)<\w+>Stable releases.*?<\w+>Not maintained' |
-    grep -aoP 'https://cache\.ruby-lang\.org.*?\.tar\.gz' |
-    grep -avP 'ruby-\d+\.\d+\.\d+-(rc|preview)\d+\.' |
-    sort -ru |
-    head -n "$count"
-  )
-}
 
 function prepare_packages {
   export PPA_PAK_PPA_NAME=${PPA_PAK_PPA_NAME:-ruby-builds}
@@ -126,7 +112,7 @@ major/minor versions are not updated."
 }
 
 function main {
-  find_stable_version_links
+  mapfile -t v_stable_links < <("$(dirname "$0")"/../helpers/find_stable_ruby_links ${v_only_latest:+--latest})
   prepare_packages
   "$(dirname "$0")"/../helpers/clean_ruby_stable_releases "$v_sources_dir"
 }

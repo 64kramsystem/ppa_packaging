@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+# Usage: find_latest_github_tag <repo_url> <version_prefix>
+# Prints the latest git tag matching <version_prefix>.\d+
+
+repo_url="$1"
+version_prefix="$2"
+version_prefix_escaped="${version_prefix//./\\.}"
+
+git ls-remote --tags "$repo_url" |
+  grep -oP "refs/tags/\K${version_prefix_escaped}"'\.\d+$' |
+  sort -V |
+  tail -n 1

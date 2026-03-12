@@ -51,16 +51,9 @@ function decode_commandline_options {
   done
 }
 
-function find_latest_version {
-  git ls-remote --tags https://github.com/jemalloc/jemalloc.git |
-    grep -oP "refs/tags/\K${c_jemalloc_version_prefix}"'\.\d+$' |
-    sort -V |
-    tail -n 1
-}
-
 function prepare_package {
   local version
-  version=$(find_latest_version)
+  version=$("$(dirname "$0")"/../helpers/find_latest_github_tag https://github.com/jemalloc/jemalloc.git "$c_jemalloc_version_prefix")
 
   export PPA_PAK_PPA_NAME=${PPA_PAK_PPA_NAME:-ruby-builds}
   export PPA_PAK_PACKAGE_NAME="libjemalloc3-dev"
