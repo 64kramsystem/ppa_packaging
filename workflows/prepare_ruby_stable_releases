@@ -6,7 +6,7 @@ set -o nounset
 set -o errtrace
 shopt -s inherit_errexit
 
-# Downloads stable Ruby versions from the Ruby downloads page and packages them via prepare_ppa_package.
+# Downloads stable Ruby versions from the Ruby downloads page and packages them via prepare_ppa_package (built with jemalloc 3).
 #
 # Requires: PPA_PAK_LAUNCHPAD_ID, PPA_PAK_EMAIL.
 # Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION, PPA_PAK_BUILD_DIR.
@@ -85,8 +85,9 @@ function prepare_packages {
 
   export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
   export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
-  export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates,curl,libc6-dev,libffi-dev,libgdbm-dev,libncurses5-dev,libsqlite3-dev,libtool,libyaml-dev,make,openssl,patch,pkg-config,sqlite3,zlib1g,zlib1g-dev,libreadline-dev,libssl-dev,libgmp-dev'
+  export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates,curl,libc6-dev,libffi-dev,libgdbm-dev,libncurses5-dev,libsqlite3-dev,libtool,libyaml-dev,make,openssl,patch,pkg-config,sqlite3,zlib1g,zlib1g-dev,libreadline-dev,libssl-dev,libgmp-dev,libjemalloc3-dev'
   export PPA_PAK_DEPS='libgmp-dev'
+  export PPA_PAK_DH_OVERRIDES=$'override_dh_auto_configure:\n\tdh_auto_configure -- --with-jemalloc'
   export PPA_PAK_LONG_DESCRIPTION="Ruby is the interpreted scripting language for quick and easy
 object-oriented programming.  It has many features to process text
 files and to do system management tasks (as in perl).  It is simple,
