@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 setup() {
-  source "$(dirname "$BATS_TEST_FILENAME")/../helpers/clean_ruby_stable_releases"
+  source "$(dirname "$BATS_TEST_FILENAME")/../helpers/clean_releases"
 
   export TMPDIR
   TMPDIR=$(mktemp -d)
@@ -31,7 +31,7 @@ function make_source_dir {
 }
 
 function sorted_output {
-  find_releases_to_delete "$TMPDIR" "$1" | sort
+  find_releases_to_delete "$TMPDIR" "$1" 'ruby[0-9]*_*' 'ruby-' 1 | sort
 }
 
 # ──────────────────────────────────────────────────────────────────────────────

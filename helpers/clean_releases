@@ -1,0 +1,155 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+set -o errtrace
+shopt -s inherit_errexit
+
+# Deletes old release source files and directories from a build dir,
+# keeping the N most recent versions per group.
+#
+# Filenames are expected to follow the Debian source package naming convention:
+#   <package>_<version>-<debian_suffix>~<distro><n>.<ext>
+#
+# Options:
+#   --keep <n>      Versions to keep per group (default: 3)
+#   --multi-package Group by (pkg, distro) instead of distro only.
+#                   Use when multiple packages share the same build dir (e.g. ruby3.2, ruby3.3).
+
+c_help="Usage: $(basename "$0") [--keep <n>] [--multi-package] <build_dir> <file_glob> <source_dir_prefix>
+
+Deletes old release source files and directories from a build dir,
+keeping the N most recent versions per group.
+"
+
+v_keep=3
+v_multi_package=
+v_sources_dir=
+v_file_glob=
+v_source_dir_prefix=
+
+function decode_commandline_options {
+  eval set -- "$(getopt --options hk: --long help,keep:,multi-package -- "$@")"
+
+  while true; do
+    case "$1" in
+      -h|--help)
+        echo "$c_help"
+        exit 0 ;;
+      -k|--keep)
+        v_keep="$2"
+        shift 2 ;;
+      --multi-package)
+        v_multi_package=1
+        shift ;;
+      --)
+        shift
+        break ;;
+    esac
+  done
+
+  if [[ $# -ne 3 ]]; then
+    echo "$c_help"
+    exit 1
+  fi
+
+  v_sources_dir=$1
+  v_file_glob=$2
+  v_source_dir_prefix=$3
+}
+
+# find_releases_to_delete <sources_dir> <keep> <file_glob> <source_dir_prefix> [<multi_package>]
+# Prints paths (files and source dirs) that should be deleted.
+function find_releases_to_delete {
+  local sources_dir=$1
+  local keep=$2
+  local file_glob=$3
+  local source_dir_prefix=$4
+  local multi_package=${5:-}
+
+  # In multi-package mode, capture (pkg, version, distro) from: pkg_version-suffix~distroN.ext
+  # In single-package mode, capture (version, distro) from: pkg_version-suffix~distroN.ext
+  local c_ver_distro_regex='([0-9]+\.[0-9]+\.[0-9]+)-[^~]+~([a-z]+)[0-9]+\.'
+  local file_regex
+  if [[ -n $multi_package ]]; then
+    file_regex="^([^_]+)_${c_ver_distro_regex}"
+  else
+    local pkg_prefix="${file_glob%_*}"
+    file_regex="^${pkg_prefix}_${c_ver_distro_regex}"
+  fi
+
+  local -A versions_per_group
+
+  while IFS= read -r file; do
+    local basename
+    basename=$(basename "$file")
+    if [[ $basename =~ $file_regex ]]; then
+      local key ver
+      if [[ -n $multi_package ]]; then
+        local pkg="${BASH_REMATCH[1]}" distro="${BASH_REMATCH[3]}"
+        ver="${BASH_REMATCH[2]}"
+        key="${pkg}~${distro}"
+      else
+        ver="${BASH_REMATCH[1]}"
+        local distro="${BASH_REMATCH[2]}"
+        key="$distro"
+      fi
+      if [[ " ${versions_per_group[$key]:-} " != *" $ver "* ]]; then
+        versions_per_group[$key]+=" $ver"
+      fi
+    fi
+  done < <(find "$sources_dir" -maxdepth 1 -type f -name "$file_glob")
+
+  local -A versions_to_delete_set versions_to_keep_set
+
+  for key in "${!versions_per_group[@]}"; do
+    local sorted_versions
+    mapfile -t sorted_versions < <(tr ' ' '\n' <<< "${versions_per_group[$key]}" | grep -v '^$' | sort -V)
+    local total=${#sorted_versions[@]}
+    local delete_count=0
+    [[ $total -gt $keep ]] && delete_count=$(( total - keep ))
+
+    for (( i = 0; i < total; i++ )); do
+      local ver="${sorted_versions[$i]}"
+      if [[ $i -lt $delete_count ]]; then
+        if [[ -n $multi_package ]]; then
+          local pkg="${key%~*}" distro="${key#*~}"
+          find "$sources_dir" -maxdepth 1 -type f -name "${pkg}_${ver}-*~${distro}*"
+        else
+          local pkg_prefix="${file_glob%_*}" distro="$key"
+          find "$sources_dir" -maxdepth 1 -type f -name "${pkg_prefix}_${ver}-*~${distro}*"
+        fi
+        versions_to_delete_set[$ver]=1
+      else
+        versions_to_keep_set[$ver]=1
+      fi
+    done
+  done
+
+  # A version is removed from its source dir only if no distro still needs it.
+  for version in "${!versions_to_delete_set[@]}"; do
+    [[ -n "${versions_to_keep_set[$version]:-}" ]] && continue
+    local source_dir="${sources_dir}/${source_dir_prefix}${version}"
+    if [[ -d "$source_dir" ]]; then
+      echo "$source_dir"
+    fi
+  done
+}
+
+function clean_old_releases {
+  find_releases_to_delete "$v_sources_dir" "$v_keep" "$v_file_glob" "$v_source_dir_prefix" "$v_multi_package" |
+    while IFS= read -r path; do
+      echo "Deleting $path"
+      rm -rf "$path"
+    done
+}
+
+function main {
+  clean_old_releases
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  decode_commandline_options "$@"
+  main
+fi

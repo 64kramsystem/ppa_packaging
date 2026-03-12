@@ -114,7 +114,7 @@ major/minor versions are not updated."
 function main {
   mapfile -t v_stable_links < <("$(dirname "$0")"/../helpers/find_stable_ruby_links ${v_only_latest:+--latest})
   prepare_packages
-  "$(dirname "$0")"/../helpers/clean_ruby_stable_releases "$v_sources_dir"
+  "$(dirname "$0")"/../helpers/clean_releases --multi-package "$v_sources_dir" 'ruby[0-9]*_*' 'ruby-'
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

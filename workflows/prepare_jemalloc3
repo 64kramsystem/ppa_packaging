@@ -92,7 +92,7 @@ function prepare_package {
 
 function main {
   prepare_package
-  "$(dirname "$0")"/../helpers/clean_jemalloc_releases "$v_sources_dir"
+  "$(dirname "$0")"/../helpers/clean_releases "$v_sources_dir" 'libjemalloc3-dev_*' 'jemalloc-'
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
