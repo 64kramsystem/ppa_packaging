@@ -186,9 +186,13 @@ function clean_old_releases {
   done < <(find_releases_to_delete "$v_sources_dir" "$v_keep_releases")
 }
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-  decode_commandline_options "$@"
+function main {
   find_stable_version_links
   prepare_packages
   clean_old_releases
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  decode_commandline_options "$@"
+  main
 fi
