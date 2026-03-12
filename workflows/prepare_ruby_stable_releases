@@ -27,7 +27,7 @@ shopt -s inherit_errexit
 
 c_ruby_downloads_url="https://www.ruby-lang.org/en/downloads"
 c_default_sources_dir="/var/lib/ruby_ppa_packaging"
-c_help="Usage: $(basename "$0") [-u|--no-upload] [-r|--rebuild-existing] [-l|--latest] [-d|--build-dir <dir>]
+c_help="Usage: $(basename "$0") [-u|--no-upload] [-l|--latest] [-d|--build-dir <dir>]
 
 Downloads stable Ruby versions from the Ruby downloads page and packages them via prepare_ppa_package.
 After building, cleans old releases via clean_ruby_stable_releases (see that script for options).
@@ -37,14 +37,13 @@ Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION, 
 "
 
 v_no_upload=
-v_rebuild_existing=
 v_only_latest=
 v_sources_dir="${PPA_PAK_BUILD_DIR:-$c_default_sources_dir}"
 
 v_stable_links=()
 
 function decode_commandline_options {
-  eval set -- "$(getopt --options hurld: --long help,no-upload,rebuild-existing,latest,build-dir: -- "$@")"
+  eval set -- "$(getopt --options huld: --long help,no-upload,latest,build-dir: -- "$@")"
 
   while true; do
     case "$1" in
@@ -53,9 +52,6 @@ function decode_commandline_options {
         exit 0 ;;
       -u|--no-upload)
         v_no_upload=1
-        shift ;;
-      -r|--rebuild-existing)
-        v_rebuild_existing=1
         shift ;;
       -l|--latest)
         v_only_latest=1
@@ -103,7 +99,6 @@ major/minor versions are not updated."
 
   local options=()
   [[ -n $v_no_upload ]] && options+=(--no-upload)
-  [[ -n $v_rebuild_existing ]] && options+=(--rebuild-existing)
 
   for link in "${v_stable_links[@]}"; do
     local version
