@@ -18,7 +18,8 @@ count=255
 
 wget -qO- "$c_ruby_downloads_url" |
   grep -zoP '(?s)<\w+>Stable releases.*?<\w+>Not maintained' |
-  grep -aoP 'https://cache\.ruby-lang\.org.*?\.tar\.gz' |
+  tr '\0' '\n' |
+  grep -oP 'https://cache\.ruby-lang\.org.*?\.tar\.gz' |
   grep -avP 'ruby-\d+\.\d+\.\d+-(rc|preview)\d+\.' |
   sort -ru |
   head -n "$count"

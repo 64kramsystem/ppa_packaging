@@ -73,7 +73,6 @@ function prepare_packages {
   export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
   export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates,curl,libc6-dev,libffi-dev,libgdbm-dev,libncurses5-dev,libsqlite3-dev,libtool,libyaml-dev,make,openssl,patch,pkg-config,sqlite3,zlib1g,zlib1g-dev,libreadline-dev,libssl-dev,libgmp-dev,libjemalloc3-dev'
   export PPA_PAK_DEPS='libgmp-dev'
-  export PPA_PAK_DH_OVERRIDES=$'override_dh_auto_configure:\n\tdh_auto_configure -- --with-jemalloc'
   export PPA_PAK_LONG_DESCRIPTION="Ruby is the interpreted scripting language for quick and easy
 object-oriented programming.  It has many features to process text
 files and to do system management tasks (as in perl).  It is simple,

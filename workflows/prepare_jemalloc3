@@ -71,7 +71,7 @@ function prepare_package {
   #   dh_auto_configure injects automatically; call ./configure directly to avoid this.
   # - tests (--no-test): modern GCC's LTO (-flto=auto) causes multiple definition errors in
   #   jemalloc's test suite (jet_malloc_conf); skip tests as this is a known incompatibility.
-  export PPA_PAK_DH_OVERRIDES=$'override_dh_autoreconf:\n\techo Skipping dh_autoreconf\n\noverride_dh_auto_configure:\n\t./configure --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu --disable-shared --enable-static'
+  export PPA_PAK_DH_OVERRIDES=$'override_dh_autoreconf:\n\techo Skipping dh_autoreconf\n\noverride_dh_auto_configure:\n\t./configure --prefix=/usr --libdir=/usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH) --disable-shared --enable-static'
 
   local tarball_url="https://github.com/jemalloc/jemalloc/releases/download/${version}/jemalloc-${version}.tar.bz2"
   local source_dir="$v_sources_dir/jemalloc-$version"
