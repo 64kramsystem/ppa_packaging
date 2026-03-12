@@ -8,32 +8,24 @@ shopt -s inherit_errexit
 
 # Deletes old Ruby release source files and directories from the build dir,
 # keeping the N most recent patch versions per package/distro group.
-#
-# Optional: PPA_PAK_BUILD_DIR (defaults to '$c_default_sources_dir').
 
-c_default_sources_dir="/var/lib/ruby_ppa_packaging"
-c_help="Usage: $(basename "$0") [-d|--build-dir <dir>] [-k|--keep-releases <number>]
+c_help="Usage: $(basename "$0") [-k|--keep-releases <number>] <build_dir>
 
 Deletes old Ruby release source files and directories from the build dir,
 keeping the N most recent patch versions per package/distro group.
-
-Optional: PPA_PAK_BUILD_DIR (defaults to '$c_default_sources_dir').
 "
 
 v_keep_releases=3
-v_sources_dir="${PPA_PAK_BUILD_DIR:-$c_default_sources_dir}"
+v_sources_dir=
 
 function decode_commandline_options {
-  eval set -- "$(getopt --options hd:k: --long help,build-dir:,keep-releases: -- "$@")"
+  eval set -- "$(getopt --options hk: --long help,keep-releases: -- "$@")"
 
   while true; do
     case "$1" in
       -h|--help)
         echo "$c_help"
         exit 0 ;;
-      -d|--build-dir)
-        v_sources_dir="$2"
-        shift 2 ;;
       -k|--keep-releases)
         v_keep_releases="$2"
         shift 2 ;;
@@ -42,6 +34,13 @@ function decode_commandline_options {
         break ;;
     esac
   done
+
+  if [[ $# -ne 1 ]]; then
+    echo "$c_help"
+    exit 1
+  fi
+
+  v_sources_dir=$1
 }
 
 function find_releases_to_delete {

@@ -130,7 +130,7 @@ major/minor versions are not updated."
 function main {
   find_stable_version_links
   prepare_packages
-  "$(dirname "$0")"/clean_ruby_stable_releases --build-dir "$v_sources_dir"
+  "$(dirname "$0")"/clean_ruby_stable_releases "$v_sources_dir"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
