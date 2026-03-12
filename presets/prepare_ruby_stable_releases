@@ -27,9 +27,10 @@ shopt -s inherit_errexit
 
 c_ruby_downloads_url="https://www.ruby-lang.org/en/downloads"
 c_default_sources_dir="/var/lib/ruby_ppa_packaging"
-c_help="Usage: $(basename "$0") [-u|--no-upload] [-r|--rebuild-existing] [-l|--latest] [-d|--build-dir <dir>] [-k|--keep-releases <number>]
+c_help="Usage: $(basename "$0") [-u|--no-upload] [-r|--rebuild-existing] [-l|--latest] [-d|--build-dir <dir>]
 
 Downloads stable Ruby versions from the Ruby downloads page and packages them via prepare_ppa_package.
+After building, cleans old releases via clean_ruby_stable_releases (see that script for options).
 
 Requires: PPA_PAK_LAUNCHPAD_ID, PPA_PAK_EMAIL.
 Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION, PPA_PAK_BUILD_DIR (defaults to '$c_default_sources_dir').
@@ -38,13 +39,12 @@ Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION, 
 v_no_upload=
 v_rebuild_existing=
 v_only_latest=
-v_keep_releases=3
 v_sources_dir="${PPA_PAK_BUILD_DIR:-$c_default_sources_dir}"
 
 v_stable_links=()
 
 function decode_commandline_options {
-  eval set -- "$(getopt --options hurld:k: --long help,no-upload,rebuild-existing,latest,build-dir:,keep-releases: -- "$@")"
+  eval set -- "$(getopt --options hurld: --long help,no-upload,rebuild-existing,latest,build-dir: -- "$@")"
 
   while true; do
     case "$1" in
@@ -62,9 +62,6 @@ function decode_commandline_options {
         shift ;;
       -d|--build-dir)
         v_sources_dir="$2"
-        shift 2 ;;
-      -k|--keep-releases)
-        v_keep_releases="$2"
         shift 2 ;;
       --)
         shift
@@ -106,7 +103,7 @@ major/minor versions are not updated."
 
   local options=()
   [[ -n $v_no_upload ]] && options+=(--no-upload)
-  [[ -z $v_rebuild_existing ]] && options+=(--skip-existing)
+  [[ -n $v_rebuild_existing ]] && options+=(--rebuild-existing)
 
   for link in "${v_stable_links[@]}"; do
     local version
@@ -133,7 +130,7 @@ major/minor versions are not updated."
 function main {
   find_stable_version_links
   prepare_packages
-  "$(dirname "$0")"/clean_ruby_stable_releases --build-dir "$v_sources_dir" --keep-releases "$v_keep_releases"
+  "$(dirname "$0")"/clean_ruby_stable_releases --build-dir "$v_sources_dir"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
