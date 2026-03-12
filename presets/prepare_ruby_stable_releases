@@ -130,66 +130,10 @@ major/minor versions are not updated."
   done
 }
 
-function find_releases_to_delete {
-  local sources_dir=$1
-  local keep_releases=$2
-
-  declare -A versions_per_group
-
-  while IFS= read -r file; do
-    local basename
-    basename=$(basename "$file")
-    if [[ $basename =~ ^(ruby[0-9]+\.[0-9]+)_([0-9]+\.[0-9]+\.[0-9]+)-[^~]+~([a-z]+)[0-9]+\. ]]; then
-      local pkg="${BASH_REMATCH[1]}" ver="${BASH_REMATCH[2]}" distro="${BASH_REMATCH[3]}"
-      local key="${pkg}~${distro}"
-      if [[ " ${versions_per_group[$key]:-} " != *" $ver "* ]]; then
-        versions_per_group[$key]+=" $ver"
-      fi
-    fi
-  done < <(find "$sources_dir" -maxdepth 1 -type f -name 'ruby[0-9]*_*')
-
-  local -A versions_to_delete_set versions_to_keep_set
-
-  for key in "${!versions_per_group[@]}"; do
-    local pkg="${key%~*}" distro="${key#*~}"
-    local sorted_versions
-    mapfile -t sorted_versions < <(tr ' ' '\n' <<< "${versions_per_group[$key]}" | grep -v '^$' | sort -V)
-    local total=${#sorted_versions[@]}
-
-    local delete_count=0
-    [[ $total -gt $keep_releases ]] && delete_count=$(( total - keep_releases ))
-
-    for (( i = 0; i < total; i++ )); do
-      local ver="${sorted_versions[$i]}"
-      if [[ $i -lt $delete_count ]]; then
-        find "$sources_dir" -maxdepth 1 -type f -name "${pkg}_${ver}-*~${distro}*"
-        versions_to_delete_set[$ver]=1
-      else
-        versions_to_keep_set[$ver]=1
-      fi
-    done
-  done
-
-  for version in "${!versions_to_delete_set[@]}"; do
-    [[ -n "${versions_to_keep_set[$version]:-}" ]] && continue
-    local source_dir="$sources_dir/ruby-$version"
-    if [[ -d "$source_dir" ]]; then
-      echo "$source_dir"
-    fi
-  done
-}
-
-function clean_old_releases {
-  while IFS= read -r path; do
-    echo "Deleting $path"
-    rm -rf "$path"
-  done < <(find_releases_to_delete "$v_sources_dir" "$v_keep_releases")
-}
-
 function main {
   find_stable_version_links
   prepare_packages
-  clean_old_releases
+  "$(dirname "$0")"/clean_ruby_stable_releases --build-dir "$v_sources_dir" --keep-releases "$v_keep_releases"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
