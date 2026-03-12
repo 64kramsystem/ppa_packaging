@@ -1,0 +1,98 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+set -o errtrace
+shopt -s inherit_errexit
+
+# Deletes old jemalloc release source files and directories from the build dir,
+# keeping the N most recent versions.
+
+c_help="Usage: $(basename "$0") [-k|--keep-releases <number>] <build_dir>
+
+Deletes old jemalloc release source files and directories from the build dir,
+keeping the N most recent versions.
+"
+
+v_keep_releases=1
+v_sources_dir=
+
+function decode_commandline_options {
+  eval set -- "$(getopt --options hk: --long help,keep-releases: -- "$@")"
+
+  while true; do
+    case "$1" in
+      -h|--help)
+        echo "$c_help"
+        exit 0 ;;
+      -k|--keep-releases)
+        v_keep_releases="$2"
+        shift 2 ;;
+      --)
+        shift
+        break ;;
+    esac
+  done
+
+  if [[ $# -ne 1 ]]; then
+    echo "$c_help"
+    exit 1
+  fi
+
+  v_sources_dir=$1
+}
+
+function clean_old_releases {
+  # Clean source directories (jemalloc-<version>/)
+  local dirs=()
+  mapfile -t dirs < <(find "$v_sources_dir" -maxdepth 1 -type d -name 'jemalloc-*' | sort -V)
+  local total=${#dirs[@]}
+  local delete_count=0
+  [[ $total -gt $v_keep_releases ]] && delete_count=$(( total - v_keep_releases ))
+
+  for (( i = 0; i < delete_count; i++ )); do
+    echo "Deleting ${dirs[$i]}"
+    rm -rf "${dirs[$i]}"
+  done
+
+  # Clean source package files (libjemalloc3-dev_<version>-*~<distro>*) per distro
+  local -A versions_per_distro
+
+  while IFS= read -r file; do
+    local basename
+    basename=$(basename "$file")
+    if [[ $basename =~ ^libjemalloc3-dev_([0-9]+\.[0-9]+\.[0-9]+)-[^~]+~([a-z]+)[0-9]+\. ]]; then
+      local ver="${BASH_REMATCH[1]}" distro="${BASH_REMATCH[2]}"
+      if [[ " ${versions_per_distro[$distro]:-} " != *" $ver "* ]]; then
+        versions_per_distro[$distro]+=" $ver"
+      fi
+    fi
+  done < <(find "$v_sources_dir" -maxdepth 1 -type f -name 'libjemalloc3-dev_*')
+
+  for distro in "${!versions_per_distro[@]}"; do
+    local sorted_versions
+    mapfile -t sorted_versions < <(tr ' ' '\n' <<< "${versions_per_distro[$distro]}" | grep -v '^$' | sort -V)
+    local ver_total=${#sorted_versions[@]}
+    local ver_delete_count=0
+    [[ $ver_total -gt $v_keep_releases ]] && ver_delete_count=$(( ver_total - v_keep_releases ))
+
+    for (( i = 0; i < ver_delete_count; i++ )); do
+      local ver="${sorted_versions[$i]}"
+      find "$v_sources_dir" -maxdepth 1 -type f -name "libjemalloc3-dev_${ver}-*~${distro}*" |
+        while IFS= read -r file; do
+          echo "Deleting $file"
+          rm -f "$file"
+        done
+    done
+  done
+}
+
+function main {
+  clean_old_releases
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  decode_commandline_options "$@"
+  main
+fi

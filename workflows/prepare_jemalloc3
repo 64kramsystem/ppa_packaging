@@ -1,0 +1,108 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+set -o errtrace
+shopt -s inherit_errexit
+
+# Packages the latest jemalloc 3.6.x as a static dev library, for use as a Ruby build dependency.
+# Downloads the source tarball from GitHub if not already present in the build dir.
+#
+# Requires: PPA_PAK_LAUNCHPAD_ID, PPA_PAK_EMAIL.
+# Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION, PPA_PAK_BUILD_DIR.
+
+c_jemalloc_version_prefix="3.6"
+c_default_sources_dir="/var/lib/ruby_ppa_packaging"
+c_help="Usage: $(basename "$0") [-u|--no-upload] [-r|--rebuild-existing] [-d|--build-dir <dir>]
+
+Packages the latest jemalloc ${c_jemalloc_version_prefix}.x as a static dev library, for use as a Ruby build dependency.
+After building, cleans old releases via clean_jemalloc_releases (see that script for options).
+
+Requires: PPA_PAK_LAUNCHPAD_ID, PPA_PAK_EMAIL.
+Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION, PPA_PAK_BUILD_DIR (defaults to '$c_default_sources_dir').
+"
+
+v_no_upload=
+v_rebuild_existing=
+v_sources_dir="${PPA_PAK_BUILD_DIR:-$c_default_sources_dir}"
+
+function decode_commandline_options {
+  eval set -- "$(getopt --options hurd: --long help,no-upload,rebuild-existing,build-dir: -- "$@")"
+
+  while true; do
+    case "$1" in
+      -h|--help)
+        echo "$c_help"
+        exit 0 ;;
+      -u|--no-upload)
+        v_no_upload=1
+        shift ;;
+      -r|--rebuild-existing)
+        v_rebuild_existing=1
+        shift ;;
+      -d|--build-dir)
+        v_sources_dir="$2"
+        shift 2 ;;
+      --)
+        shift
+        break ;;
+    esac
+  done
+}
+
+function find_latest_version {
+  git ls-remote --tags https://github.com/jemalloc/jemalloc.git |
+    grep -oP "refs/tags/\K${c_jemalloc_version_prefix}"'\.\d+$' |
+    sort -V |
+    tail -n 1
+}
+
+function prepare_package {
+  local version
+  version=$(find_latest_version)
+
+  export PPA_PAK_PPA_NAME=${PPA_PAK_PPA_NAME:-ruby-builds}
+  export PPA_PAK_PACKAGE_NAME="libjemalloc3-dev"
+  export PPA_PAK_VERSION="$version"
+  export PPA_PAK_COPYRIGHT="bsd"
+  export PPA_PAK_DESCRIPTION="Development files for jemalloc 3 memory allocator (static library)"
+  export PPA_PAK_HOMEPAGE="https://jemalloc.net/"
+  export PPA_PAK_SECTION="libdevel"
+  export PPA_PAK_DISTROS="jammy,noble,questing"
+  export PPA_PAK_VCS_GIT="https://github.com/jemalloc/jemalloc.git"
+  # jemalloc 3.6.0 build quirks:
+  # - dh_autoreconf: jemalloc uses non-standard autoconf macros that make autoheader fail; the
+  #   tarball ships a pre-generated configure, so autoreconf can be skipped entirely.
+  # - dh_auto_configure: the old configure script doesn't recognize --runstatedir=/run, which
+  #   dh_auto_configure injects automatically; call ./configure directly to avoid this.
+  # - tests (--no-test): modern GCC's LTO (-flto=auto) causes multiple definition errors in
+  #   jemalloc's test suite (jet_malloc_conf); skip tests as this is a known incompatibility.
+  export PPA_PAK_DH_OVERRIDES=$'override_dh_autoreconf:\n\techo Skipping dh_autoreconf\n\noverride_dh_auto_configure:\n\t./configure --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu --disable-shared --enable-static'
+
+  local tarball_url="https://github.com/jemalloc/jemalloc/releases/download/${version}/jemalloc-${version}.tar.bz2"
+  local source_dir="$v_sources_dir/jemalloc-$version"
+
+  if [[ ! -d "$source_dir" ]]; then
+    echo "Downloading $tarball_url..."
+    wget -qO- "$tarball_url" | tar xj -C "$v_sources_dir"
+  fi
+
+  rm -rf "$source_dir/debian"
+
+  local options=()
+  [[ -n $v_no_upload ]] && options+=(--no-upload)
+  [[ -n $v_rebuild_existing ]] && options+=(--rebuild-existing)
+
+  "$(dirname "$0")"/../prepare_ppa_package --no-test "${options[@]}" "$source_dir"
+}
+
+function main {
+  prepare_package
+  "$(dirname "$0")"/../helpers/clean_jemalloc_releases "$v_sources_dir"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  decode_commandline_options "$@"
+  main
+fi
