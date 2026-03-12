@@ -27,7 +27,7 @@ shopt -s inherit_errexit
 
 c_ruby_downloads_url="https://www.ruby-lang.org/en/downloads"
 c_default_sources_dir="/var/lib/ruby_ppa_packaging"
-c_help="Usage: $(basename "$0") [-u|--no-upload] [-s|--skip-existing] [-l|--latest] [-d|--build-dir <dir>]
+c_help="Usage: $(basename "$0") [-u|--no-upload] [-s|--skip-existing] [-l|--latest] [-d|--build-dir <dir>] [-k|--keep-releases <number>]
 
 Downloads stable Ruby versions from the Ruby downloads page and packages them via prepare_ppa_package.
 
@@ -38,12 +38,13 @@ Optional: PPA_PAK_PPA_NAME (defaults to 'ruby-builds'), PPA_PAK_DEBIAN_VERSION, 
 v_no_upload=
 v_skip_existing=
 v_only_latest=
+v_keep_releases=3
 v_sources_dir="${PPA_PAK_BUILD_DIR:-$c_default_sources_dir}"
 
 v_stable_links=()
 
 function decode_commandline_options {
-  eval set -- "$(getopt --options husld: --long help,no-upload,skip-existing,latest,build-dir: -- "$@")"
+  eval set -- "$(getopt --options husld:k: --long help,no-upload,skip-existing,latest,build-dir:,keep-releases: -- "$@")"
 
   while true; do
     case "$1" in
@@ -61,6 +62,9 @@ function decode_commandline_options {
         shift ;;
       -d|--build-dir)
         v_sources_dir="$2"
+        shift 2 ;;
+      -k|--keep-releases)
+        v_keep_releases="$2"
         shift 2 ;;
       --)
         shift
@@ -126,6 +130,65 @@ major/minor versions are not updated."
   done
 }
 
-decode_commandline_options "$@"
-find_stable_version_links
-prepare_packages
+function find_releases_to_delete {
+  local sources_dir=$1
+  local keep_releases=$2
+
+  declare -A versions_per_group
+
+  while IFS= read -r file; do
+    local basename
+    basename=$(basename "$file")
+    if [[ $basename =~ ^(ruby[0-9]+\.[0-9]+)_([0-9]+\.[0-9]+\.[0-9]+)-[^~]+~([a-z]+)[0-9]+\. ]]; then
+      local pkg="${BASH_REMATCH[1]}" ver="${BASH_REMATCH[2]}" distro="${BASH_REMATCH[3]}"
+      local key="${pkg}~${distro}"
+      if [[ " ${versions_per_group[$key]:-} " != *" $ver "* ]]; then
+        versions_per_group[$key]+=" $ver"
+      fi
+    fi
+  done < <(find "$sources_dir" -maxdepth 1 -type f -name 'ruby[0-9]*_*')
+
+  local -A versions_to_delete_set versions_to_keep_set
+
+  for key in "${!versions_per_group[@]}"; do
+    local pkg="${key%~*}" distro="${key#*~}"
+    local sorted_versions
+    mapfile -t sorted_versions < <(tr ' ' '\n' <<< "${versions_per_group[$key]}" | grep -v '^$' | sort -V)
+    local total=${#sorted_versions[@]}
+
+    local delete_count=0
+    [[ $total -gt $keep_releases ]] && delete_count=$(( total - keep_releases ))
+
+    for (( i = 0; i < total; i++ )); do
+      local ver="${sorted_versions[$i]}"
+      if [[ $i -lt $delete_count ]]; then
+        find "$sources_dir" -maxdepth 1 -type f -name "${pkg}_${ver}-*~${distro}*"
+        versions_to_delete_set[$ver]=1
+      else
+        versions_to_keep_set[$ver]=1
+      fi
+    done
+  done
+
+  for version in "${!versions_to_delete_set[@]}"; do
+    [[ -n "${versions_to_keep_set[$version]:-}" ]] && continue
+    local source_dir="$sources_dir/ruby-$version"
+    if [[ -d "$source_dir" ]]; then
+      echo "$source_dir"
+    fi
+  done
+}
+
+function clean_old_releases {
+  while IFS= read -r path; do
+    echo "Deleting $path"
+    rm -rf "$path"
+  done < <(find_releases_to_delete "$v_sources_dir" "$v_keep_releases")
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  decode_commandline_options "$@"
+  find_stable_version_links
+  prepare_packages
+  clean_old_releases
+fi
