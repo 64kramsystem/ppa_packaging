@@ -101,7 +101,7 @@ major/minor versions are not updated."
     export PPA_PAK_VERSION="$version"
     export PPA_PAK_COPYRIGHT="$source_dir/BSDL"
     export PPA_PAK_DH_OVERRIDES="override_dh_auto_configure:
-	dh_auto_configure -- --prefix=/usr/lib/ruby/versions/${version}-${PPA_PAK_DEBIAN_VERSION:-jemalloc} --with-jemalloc"
+	dh_auto_configure -- --prefix=/usr/lib/ruby-jemalloc/versions/${version}-${PPA_PAK_DEBIAN_VERSION:-jemalloc} --with-jemalloc"
 
     # prepare_ppa_package doesn't support pre-existing debian/ directories, so clean it up before each run.
     rm -rf "$source_dir/debian"
