@@ -26,6 +26,8 @@ shopt -s inherit_errexit
 # <li><strong>Not maintained anymore (EOL):</strong>
 
 c_default_sources_dir="/var/lib/ruby_ppa_packaging"
+# Ubuntu's installs in `/usr/lib/ruby` (no version subdir), so we make it (considerably) different.
+c_installation_prefix="/usr/lib/ruby-jemalloc/versions"
 c_help="Usage: $(basename "$0") [-u|--no-upload] [-l|--latest] [-d|--build-dir <dir>]
 
 Downloads stable Ruby versions from the Ruby downloads page and packages them via prepare_ppa_package.
@@ -101,7 +103,7 @@ major/minor versions are not updated."
     export PPA_PAK_VERSION="$version"
     export PPA_PAK_COPYRIGHT="$source_dir/BSDL"
     export PPA_PAK_DH_OVERRIDES="override_dh_auto_configure:
-	dh_auto_configure -- --prefix=/usr/lib/ruby-jemalloc/versions/${version}-${PPA_PAK_DEBIAN_VERSION:-jemalloc} --with-jemalloc"
+	dh_auto_configure -- --prefix=${c_installation_prefix}/${version}-${PPA_PAK_DEBIAN_VERSION:-jemalloc} --with-jemalloc"
 
     # prepare_ppa_package doesn't support pre-existing debian/ directories, so clean it up before each run.
     rm -rf "$source_dir/debian"
