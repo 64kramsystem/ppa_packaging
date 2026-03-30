@@ -73,7 +73,7 @@ function prepare_packages {
 
   export PPA_PAK_DESCRIPTION='Interpreter of object-oriented scripting language Ruby'
   export PPA_PAK_HOMEPAGE='https://www.ruby-lang.org/'
-  export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates,curl,libc6-dev,libffi-dev,libgdbm-dev,libncurses5-dev,libsqlite3-dev,libtool,libyaml-dev,make,openssl,patch,pkg-config,sqlite3,zlib1g,zlib1g-dev,libreadline-dev,libssl-dev,libgmp-dev,libjemalloc3-dev'
+  export PPA_PAK_BUILD_DEPS='autoconf,automake,bison,ca-certificates,curl,libc6-dev,libffi-dev,libgdbm-dev,libncurses5-dev,libsqlite3-dev,libtool,libyaml-dev,make,openssl,patch,pkg-config,sqlite3,zlib1g,zlib1g-dev,libreadline-dev,libssl-dev,libgmp-dev,libjemalloc3-dev,rustc,cargo'
   export PPA_PAK_DEPS='libgmp-dev'
   export PPA_PAK_LONG_DESCRIPTION="Ruby is the interpreted scripting language for quick and easy
 object-oriented programming.  It has many features to process text
