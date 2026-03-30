@@ -103,7 +103,11 @@ major/minor versions are not updated."
     export PPA_PAK_VERSION="$version"
     export PPA_PAK_COPYRIGHT="$source_dir/BSDL"
     export PPA_PAK_DH_OVERRIDES="override_dh_auto_configure:
-	dh_auto_configure -- --prefix=${c_installation_prefix}/${version}-${PPA_PAK_DEBIAN_VERSION:-jemalloc} --with-jemalloc"
+	dh_auto_configure -- --prefix=${c_installation_prefix}/${version}-${PPA_PAK_DEBIAN_VERSION:-jemalloc} --with-jemalloc
+
+execute_before_dh_installdeb:
+	{ echo '#!/bin/sh'; echo 'set -e'; echo 'case \$\$1 in'; echo '  remove|purge)'; echo '    rm -rf ${c_installation_prefix}/${version}-${PPA_PAK_DEBIAN_VERSION:-jemalloc}'; echo '    ;;'; echo 'esac'; } > debian/postrm
+	chmod 0755 debian/postrm"
 
     # prepare_ppa_package doesn't support pre-existing debian/ directories, so clean it up before each run.
     rm -rf "$source_dir/debian"
