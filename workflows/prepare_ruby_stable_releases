@@ -91,7 +91,6 @@ major/minor versions are not updated."
   for link in "${v_stable_links[@]}"; do
     local version
     version=$(grep -oP '\d+\.\d+\.\d+' <<< "$link")
-    local major_minor=${version%.*}
     local source_dir="$v_sources_dir/ruby-$version"
 
     if [[ ! -d "$source_dir" ]]; then
@@ -99,7 +98,7 @@ major/minor versions are not updated."
       wget -qO- "$link" | tar xz -C "$v_sources_dir"
     fi
 
-    export PPA_PAK_PACKAGE_NAME="ruby$major_minor"
+    export PPA_PAK_PACKAGE_NAME="ruby$version"
     export PPA_PAK_VERSION="$version"
     export PPA_PAK_COPYRIGHT="$source_dir/BSDL"
     export PPA_PAK_DH_OVERRIDES="override_dh_auto_configure:
