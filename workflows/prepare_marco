@@ -1,0 +1,44 @@
+#!/bin/bash
+
+set -o errexit
+
+if [[ $# -ne 1 || $1 == '-h' || $1 == '--help' ]]; then
+  echo "Usage: $(basename "$0") </path/to/sourcedir>"
+  echo
+  echo 'Prepares a patched Marco 1.26.2 package, from a local git repository.'
+  echo 'The repository is packaged AS-IS (current working tree); ensure the desired'
+  echo 'patch branch is checked out before invoking this workflow.'
+  echo 'Requires PPA_PAK_LAUNCHPAD_ID and PPA_PAK_EMAIL.'
+  exit 0
+fi
+
+# Repository:        git@github.com:mate-desktop/marco.git
+# Targets Ubuntu noble's stock version (1.26.2-4build4) and bumps the Debian revision so the
+# resulting package supersedes the archive copy on upgrade. The trailing '~noble1' suffix added
+# by prepare_ppa_package keeps us strictly below a hypothetical future Ubuntu '4build5'.
+
+export PPA_PAK_PPA_NAME=${PPA_PAK_PPA_NAME:-marco-wm-fixed}
+export PPA_PAK_PACKAGE_NAME='marco'
+export PPA_PAK_VERSION='1.26.2'
+export PPA_PAK_DEBIAN_VERSION='4build5'
+export PPA_PAK_COPYRIGHT='gpl2'
+export PPA_PAK_DESCRIPTION='lightweight GTK+ window manager for MATE (patched)'
+export PPA_PAK_HOMEPAGE='https://mate-desktop.org/'
+export PPA_PAK_DISTROS='noble'
+export PPA_PAK_SECTION='x11'
+export PPA_PAK_VCS_GIT='https://github.com/mate-desktop/marco.git'
+
+# Build-deps mirrored from Debian/Ubuntu's stock marco source package, plus mate-common (for
+# autogen.sh).
+export PPA_PAK_BUILD_DEPS='gtk-doc-tools,itstool,libcanberra-gtk3-dev,libgtk-3-dev,libgtop2-dev,libice-dev,libpango1.0-dev,libsm-dev,libstartup-notification0-dev,libx11-dev,libxcomposite-dev,libxcursor-dev,libxdamage-dev,libxfixes-dev,libxinerama-dev,libxpresent-dev,libxrandr-dev,libxrender-dev,libxres-dev,mate-common,yelp-tools,zenity'
+
+# marco 1.26.2 ships configure.ac but no generated `configure`; run autogen.sh first.
+# Both autotools and meson build files are present in the tree, so force autoconf to match
+# Ubuntu's stock packaging.
+export PPA_PAK_DH_OVERRIDES=$'override_dh_auto_configure:\n\tNOCONFIGURE=1 ./autogen.sh\n\tdh_auto_configure --buildsystem=autoconf\n'
+
+# prepare_ppa_package refuses to run if a debian/ directory already exists; clean any leftover
+# from a previous invocation.
+rm -rf "$1/debian"
+
+"$(dirname "$0")"/../prepare_ppa_package "$1"
