@@ -62,7 +62,7 @@ function prepare_package {
   export PPA_PAK_DESCRIPTION="Development files for jemalloc 3 memory allocator (static library)"
   export PPA_PAK_HOMEPAGE="https://jemalloc.net/"
   export PPA_PAK_SECTION="libdevel"
-  export PPA_PAK_DISTROS="jammy,noble,questing"
+  export PPA_PAK_DISTROS="jammy,noble,resolute"
   export PPA_PAK_VCS_GIT="https://github.com/jemalloc/jemalloc.git"
   # jemalloc 3.6.0 build quirks:
   # - dh_autoreconf: jemalloc uses non-standard autoconf macros that make autoheader fail; the
